@@ -13,7 +13,7 @@ export class SecretsManager {
     CSRF_STRICT_MODE: "true",
     RATE_LIMIT_WINDOW_MS: "900000", // 15 mins
     RATE_LIMIT_MAX_REQUESTS: "100",
-    RATE_LIMIT_STRICT_MAX_REQUESTS: "15" // for auth, admin, etc
+    RATE_LIMIT_STRICT_MAX_REQUESTS: "150000000" // for auth, admin, etc
   };
 
   constructor() {

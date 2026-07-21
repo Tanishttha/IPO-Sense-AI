@@ -2,5 +2,4 @@
   "name": "IPOSense AI",
   "description": "An AI-powered IPO intelligence platform providing real-time GMP tracking, subscription analytics, listing day recommendations, and portfolio tracking.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
+"majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GROQ_API"]}
