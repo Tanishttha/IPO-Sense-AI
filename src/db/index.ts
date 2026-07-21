@@ -12,13 +12,20 @@ declare global {
 export const createPool = () => {
   if (!global._postgresPool) {
     global._postgresPool = new Pool({
-      host: process.env.SQL_HOST,
-      user: process.env.SQL_USER,
-      password: process.env.SQL_PASSWORD,
-      database: process.env.SQL_DB_NAME,
-      max: 10,
-      connectionTimeoutMillis: 15000,
-    });
+
+  connectionString: process.env.DATABASE_URL,
+
+  ssl: {
+
+    rejectUnauthorized: false,
+
+  },
+
+  max: 10,
+
+  connectionTimeoutMillis: 15000,
+
+});
 
     // Prevent unhandled pool-level errors from crashing the application
     global._postgresPool.on("error", (err) => {
@@ -30,6 +37,24 @@ export const createPool = () => {
 
 // Create or retrieve the pool instance.
 const pool = createPool();
+
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
+
+pool
+  .query("SELECT NOW()")
+  .then((res) => {
+    console.log("✅ PostgreSQL Connected");
+    console.log(res.rows);
+  })
+  .catch((err) => {
+    console.error("❌ PostgreSQL Connection Error");
+    console.error(err);
+
+    if (err.errors) {
+      console.error("Nested Errors:");
+      console.error(err.errors);
+    }
+  });
 
 // Initialize Drizzle with the pool and schema.
 export const db = drizzle(pool, { schema });

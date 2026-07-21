@@ -149,7 +149,12 @@ export default function FloatingChatbot() {
       });
       const data = await res.json();
 
-      const aiText = data.text || "Sorry, I couldn't formulate a robust financial valuation. Let me know if I can help you with anything else.";
+      const aiText = (data.text || "Sorry, I couldn't formulate a robust financial valuation. Let me know if I can help you with anything else.")
+        .replace(/\*\*/g, "")
+        .replace(/\*/g, "")
+        .replace(/__/g, "")
+        .replace(/#/g, "")
+        .trim();
       const aiMsg: Message = {
         id: Math.random().toString(),
         sender: "assistant",

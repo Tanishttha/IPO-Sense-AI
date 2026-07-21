@@ -1,10 +1,10 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import Groq from "groq-sdk";
-import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 
 // Import PostgreSQL Database & authentication middleware
@@ -39,7 +39,6 @@ import {
 } from "./src/middleware/security.ts";
 
 
-dotenv.config();
 
 const app = express();
 const PORT = 3000;
