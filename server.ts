@@ -1659,7 +1659,7 @@ app.get("/api/auth/google-simulate", (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Google SSO Simulation</title>
+        <title>SSO Simulation</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
         <style>
@@ -1681,7 +1681,7 @@ app.get("/api/auth/google-simulate", (req, res) => {
             </div>
             
             <div>
-              <h2 class="text-lg font-bold text-white">Sign in with Google</h2>
+              <h2 class="text-lg font-bold text-white">Sign in</h2>
               <p class="text-xs text-gray-400 mt-1">IPOSense AI requests your permission to access your email and profile.</p>
             </div>
           </div>
