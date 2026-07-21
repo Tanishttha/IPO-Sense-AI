@@ -2368,7 +2368,6 @@ app.get("/api/rapid/news", async (req, res) => {
     ];
   }
 
-  // Sentiment Scoring Engine (Simple NLP Classifier + Gemini Integration Fallback)
   const positiveWords = ["subscribe", "growth", "jump", "surge", "positive", "strong", "bullish", "record", "backing", "demand", "premium", "profit", "gain"];
   const negativeWords = ["debt", "risk", "fall", "slide", "plunge", "bearish", "loss", "slump", "concern", "disaster", "regulatory", "warnings", "probe"];
 
@@ -3326,7 +3325,6 @@ app.post("/api/watchlist/remove", requireAuth, async (req: AuthRequest, res) => 
   }
 });
 
-// 12. AI Success Prediction & RHP Analysis (PostgreSQL Cache + Gemini API)
 app.post("/api/ai/predict", async (req: express.Request, res: express.Response) => {
   try {
     const { ipoSymbol, ipoName, gmp, priceBand, sector, issueSize, peRatio } = req.body;
@@ -3643,8 +3641,6 @@ Make sure to extract accurate numbers if visible, or infer them. Return ONLY val
     console.error("[RHP Analyzer] Groq parsing failed, falling back to heuristic templates:", error);
   }
 
-  // Graceful fallback to rich company templates based on file name heuristics
-  // This is highly helpful when GEMINI_API_KEY is not configured or fails due to file sizes
   const nameLower = pdfName.toLowerCase();
   let companyData = {
     companyName: "Acme Enterprise Solutions Limited",
@@ -4170,7 +4166,6 @@ app.post("/api/market/adjust-scores", async (req, res) => {
     marketState.dii.status = parseFloat(diiFlow) > 0 ? "NET_BUYERS" : "NET_SELLERS";
   }
 
-  // Trigger Gemini AI evaluation to compute adjusted pricing bands, sector impacts, and risk multipliers
   try {
     const ai = getGroqClient();
     if (ai) {

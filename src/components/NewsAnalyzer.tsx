@@ -39,7 +39,7 @@ interface NewsArticle {
   sentiment?: "POSITIVE" | "NEGATIVE" | "NEUTRAL";
   sentimentScore?: number;
   
-  // Gemini AI enriched sentiment properties
+  // Groq AI enriched sentiment properties
   aiEnriched?: boolean;
   aiSentiment?: "BULLISH" | "BEARISH" | "NEUTRAL";
   aiScore?: number;
@@ -82,7 +82,7 @@ export default function NewsAnalyzer() {
         ...item,
         aiSentiment: item.sentiment === "POSITIVE" ? "BULLISH" : item.sentiment === "NEGATIVE" ? "BEARISH" : "NEUTRAL",
         aiScore: item.sentimentScore || 0,
-        aiEnriched: false, // Wait until explicit Gemini analysis is requested or do a batch analysis
+        aiEnriched: false, // Wait until explicit Groq analysis is requested or do a batch analysis
         loadingAi: false
       }));
       
@@ -95,7 +95,7 @@ export default function NewsAnalyzer() {
     }
   };
 
-  // Perform Gemini AI Sentiment analysis on a specific article card
+  // Perform Groq AI Sentiment analysis on a specific article card
   const analyzeArticleSentiment = async (articleId: string) => {
     const article = newsList.find(n => n.id === articleId);
     if (!article) return;
@@ -254,7 +254,7 @@ export default function NewsAnalyzer() {
             AI Market News Sentiment Analyzer
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            Track real-time IPO and stock market news updates. Our Gemini intelligence audits content semantics to determine market sentiments (Bullish, Bearish, or Neutral).
+            Track real-time IPO and stock market news updates. Our Groq-powered AI engine audits content semantics to determine market sentiments (Bullish, Bearish, or Neutral).
           </p>
         </div>
 
@@ -299,7 +299,7 @@ export default function NewsAnalyzer() {
             </div>
             <h4 className="text-xs font-bold text-foreground">2. Sentiment Engine</h4>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Gemini LLM semantic auditing & trigger tokenizing
+              Groq Llama semantic auditing & trigger tokenizing
             </p>
           </div>
 
@@ -391,7 +391,7 @@ export default function NewsAnalyzer() {
             AI Custom News Sentiment Simulator
           </h3>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            Test and evaluate the market impact of any news snippet, tweet, or rumors by submitting it to Gemini.
+            Test and evaluate the market impact of any news snippet, tweet, or rumors by submitting it to the Groq AI engine.
           </p>
 
           <form onSubmit={handleAnalyzeCustom} className="space-y-4 mt-4">
@@ -420,7 +420,7 @@ export default function NewsAnalyzer() {
             </div>
 
             <div className="flex items-center justify-between border-t border-border pt-4">
-              <span className="text-[10px] text-muted-foreground">Powered by Gemini 3.5 Flash Sentiment Engine</span>
+              <span className="text-[10px] text-muted-foreground">Powered by Groq Llama 3.3 Sentiment Engine</span>
               <button
                 type="submit"
                 disabled={analyzingCustom || !customTitle.trim()}
@@ -593,7 +593,7 @@ export default function NewsAnalyzer() {
                         ) : (
                           <>
                             <Sparkles className="h-3 w-3" />
-                            <span>Gemini AI Audit</span>
+                            <span>Groq AI Audit</span>
                           </>
                         )}
                       </button>
