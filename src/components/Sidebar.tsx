@@ -172,25 +172,7 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* Bottom utility controls */}
-        <div className="flex items-center justify-between pt-1 max-md:hidden">
-          <span className="text-[10px] text-muted-foreground font-mono flex items-center">
-            <Cloud className="h-3 w-3 mr-1 text-muted-foreground/60" /> Live Gateway
-          </span>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-all text-muted-foreground hover:text-foreground cursor-pointer"
-            aria-label="Toggle theme"
-          >
-            {darkMode ? (
-              <Sun className="h-3.5 w-3.5 text-amber-500" />
-            ) : (
-              <Moon className="h-3.5 w-3.5 text-indigo-500" />
-            )}
-          </button>
-        </div>
+        
         <div className="md:hidden flex justify-center">
           {user ? (
             <button

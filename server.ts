@@ -1593,22 +1593,16 @@ app.post("/api/auth/refresh", async (req, res) => {
 
 // 6. GOOGLE OAUTH URL
 app.get("/api/auth/google-url", (req, res) => {
-  const isRealClient = process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_ID.startsWith("your_");
   const callbackUrl = `${req.protocol}://${req.get("host")}/auth/callback`;
-
-  if (isRealClient) {
-    const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      redirect_uri: callbackUrl,
-      response_type: "code",
-      scope: "openid email profile",
-      prompt: "select_account",
-      state: "google_oauth_state"
-    });
-    return res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
-  } else {
-    return res.json({ url: `/api/auth/google-simulate` });
-  }
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID!,
+    redirect_uri: callbackUrl,
+    response_type: "code",
+    scope: "openid email profile",
+    prompt: "select_account",
+    state: "google_oauth_state"
+  });
+  return res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
 });
 
 // Google SSO Simulated Authorization Gateway UI
@@ -1689,14 +1683,50 @@ app.get("/api/auth/google-simulate", (req, res) => {
 
 // 7. GOOGLE CALLBACK
 app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
-  const { code, email, name, role } = req.query;
-
-  const targetEmail = (email as string || "oauth-user@iposense.ai").toLowerCase().trim();
-  const targetName = name as string || "IPO Expert";
-  const targetRole = (role as string || "INVESTOR").toUpperCase();
-  const targetUid = "GOOGLE_UID_" + crypto.createHash("sha256").update(targetEmail).digest("hex").slice(0, 24);
+  const { code } = req.query;
+  if (!code) {
+    return res.status(400).json({ error: "Missing Google authorization code" });
+  }
+  const callbackUrl = `${req.protocol}://${req.get("host")}/auth/callback`;
 
   try {
+    // Exchange code for tokens
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      code: code as string,
+      grant_type: "authorization_code",
+      redirect_uri: callbackUrl,
+    });
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+    if (!tokenRes.ok) {
+      console.error("Google token exchange failed", await tokenRes.text());
+      return res.status(500).json({ error: "Google OAuth failure: unable to exchange code" });
+    }
+    const tokenData = await tokenRes.json();
+    const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      return res.status(500).json({ error: "Google OAuth failure: missing access token" });
+    }
+    // Fetch profile
+    const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!profileRes.ok) {
+      console.error("Google profile fetch failed", await profileRes.text());
+      return res.status(500).json({ error: "Google OAuth failure: unable to fetch profile" });
+    }
+    const profile = await profileRes.json();
+    const targetEmail = (profile.email || "oauth-user@iposense.ai").toLowerCase().trim();
+    const targetName = profile.name || "IPO Expert";
+    const targetPhoto = profile.picture || null;
+    const targetRole = "INVESTOR";
+    const targetUid = "GOOGLE_UID_" + crypto.createHash("sha256").update(targetEmail).digest("hex").slice(0, 24);
+
     let userRecord = await postgresDb.query.users.findFirst({
       where: eq(dbUsers.email, targetEmail),
     });
@@ -1722,7 +1752,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
         .onConflictDoNothing();
     }
 
-    const { accessToken, refreshToken } = generateTokens({
+    const { accessToken: jwtAccessToken, refreshToken } = generateTokens({
       uid: userRecord.uid,
       email: userRecord.email,
       role: userRecord.role,
@@ -1733,7 +1763,9 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
       uid: userRecord.uid,
       email: userRecord.email,
       role: userRecord.role,
-      name: targetName
+      name: targetName,
+      displayName: targetName,
+      photoURL: targetPhoto
     });
 
     return res.send(`
@@ -1757,7 +1789,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
               if (window.opener) {
                 window.opener.postMessage({
                   type: 'OAUTH_AUTH_SUCCESS',
-                  accessToken: '${accessToken}',
+                  accessToken: '${jwtAccessToken}',
                   refreshToken: '${refreshToken}',
                   user: ${userPayload}
                 }, '*');
@@ -1774,8 +1806,8 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
       </html>
     `);
   } catch (err) {
-    console.error("Google callback error:", err);
-    return res.status(500).send("SSO authentication sync failed");
+    console.error("Google OAuth callback error:", err);
+    return res.status(500).json({ error: "Google OAuth failure: internal error" });
   }
 });
 

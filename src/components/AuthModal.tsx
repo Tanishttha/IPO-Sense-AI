@@ -49,7 +49,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         
         localStorage.setItem("iposense_access_token", accessToken);
         localStorage.setItem("iposense_refresh_token", refreshToken);
-        localStorage.setItem("iposense_user", JSON.stringify(user));
+        const normalizedUser = {
+  ...user,
+  displayName: user.displayName || user.name || "",
+  name: user.name || user.displayName || "",
+  photoURL: user.photoURL || "",
+};
+
+localStorage.setItem(
+  "iposense_user",
+  JSON.stringify(normalizedUser)
+);
         
         // Dispatch custom auth state change event for App.tsx
         window.dispatchEvent(new Event("iposense_auth_changed"));
