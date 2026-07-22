@@ -443,9 +443,13 @@ export default function NewsAnalyzer() {
                     {article.title}
                   </h4>
                   
-                  <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
-                    {article.summary.length > 120 ? `${article.summary.slice(0, 120)}...` : article.summary}
-                  </p>
+                  {article.summary && article.summary.replace(/\s-\s[^-]+$/, "").trim() !== article.title.replace(/\s-\s[^-]+$/, "").trim() && (
+                    <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">
+                      {article.summary.replace(/\s-\s[^-]+$/, "").length > 220
+                        ? `${article.summary.replace(/\s-\s[^-]+$/, "").slice(0, 220)}...`
+                        : article.summary.replace(/\s-\s[^-]+$/, "")}
+                    </p>
+                  )}
                 </div>
 
                 {/* Sentiment box */}

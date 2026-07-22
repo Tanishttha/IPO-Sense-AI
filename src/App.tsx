@@ -40,7 +40,10 @@ export default function App() {
       const res = await fetch('/api/news');
       if (res.ok) {
         const data = await res.json();
-        setNews(data);
+        setNews(data.map((item: any) => ({
+          ...item,
+          newsLink: item.link || item.url || ""
+        })));
       }
     } catch (e) {
       console.error('Failed to load news', e);

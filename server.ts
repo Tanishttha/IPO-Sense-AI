@@ -3986,11 +3986,52 @@ app.get("/api/news", async (req, res) => {
       .map((match) => {
         const item = match[1];
 
+        // --- Google News RSS description decoding and extraction ---
+        const rawDescription = item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || "";
+
+        const description = rawDescription
+          .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/<a[^>]*>(.*?)<\/a>/g, "$1")
+          .replace(/<font[^>]*>(.*?)<\/font>/g, "$1")
+          .replace(/<[^>]*>/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        // --- Title cleanup logic ---
+        const rawTitle = item.match(/<title>(.*?)<\/title>/)?.[1] || "";
+        const cleanTitle = rawTitle
+          .replace(/\s+-\s+[^-]+$/, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        const cleanedDescription = description
+          .replace(/^.*?\s{2,}/, "")
+          .replace(/https?:\/\/\S+/g, "")
+          .trim();
+
+        const extractedSummary = cleanedDescription
+          .replace(/^\s*[^:]+:\s*/, "")
+          .trim();
+
+        const newsSummary = extractedSummary && extractedSummary !== cleanTitle
+          ? extractedSummary
+          : `Market update: ${cleanTitle}. Investors are tracking IPO developments, demand trends, and listing performance.`;
+
+        // --- Extract link and add url property ---
+        const newsLink = item.match(/<link>(.*?)<\/link>/)?.[1] || "";
+
         return {
-          title: item.match(/<title>(.*?)<\/title>/)?.[1] || "",
+          title: cleanTitle,
+          summary: newsSummary.length > 220 ? newsSummary.slice(0, 220) + "..." : newsSummary,
           source: item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || "Google News",
           publishedAt: item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || new Date().toISOString(),
-          link: item.match(/<link>(.*?)<\/link>/)?.[1] || ""
+          link: newsLink,
+          url: newsLink
         };
       });
 
@@ -4020,18 +4061,40 @@ app.get("/api/news/live", async (req, res) => {
       .map((match) => {
         const item = match[1];
 
-        const title = item.match(/<title>(.*?)<\/title>/)?.[1]
+        // --- Title cleanup logic for live endpoint ---
+        const rawTitle = item.match(/<title>(.*?)<\/title>/)?.[1]
           ?.replace(/<!\[CDATA\[(.*?)\]\]>/, "$1") || "";
+
+        const title = rawTitle.replace(/\s+-\s+[^-]+$/, "").trim();
 
         const source = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || "Google News";
         const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || new Date().toISOString();
         const link = item.match(/<link>(.*?)<\/link>/)?.[1] || "";
 
+        // --- Google News RSS description decoding and extraction for live endpoint ---
+        const rawDescription = item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || "";
+
+        const summary = rawDescription
+          .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/<a[^>]*>(.*?)<\/a>/g, "$1")
+          .replace(/<font[^>]*>(.*?)<\/font>/g, "$1")
+          .replace(/<[^>]*>/g, "")
+          .replace(/https?:\/\/\S+/g, "")
+          .replace(/\s+/g, " ")
+          .trim() || "Latest IPO market update from Google News.";
+
         return {
           title,
+          summary,
           source,
           publishedAt: pubDate,
-          link
+          link,
+          url: link
         };
       });
 
