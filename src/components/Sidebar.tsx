@@ -123,18 +123,6 @@ export default function Sidebar({
                 <span className="text-xs font-semibold text-foreground truncate max-w-[100px]" title={user.displayName || user.email}>
                   {user.displayName || user.email?.split("@")[0] || "User"}
                 </span>
-                <span className="text-[9px] font-mono text-emerald-500 flex items-center">
-                  <UserCheck className="h-2 w-2 mr-0.5" /> Synchronized
-                </span>
-                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded mt-0.5 w-max tracking-wide uppercase ${
-                  userRole === "ADMINISTRATOR" 
-                    ? "bg-red-500/15 text-red-400 border border-red-500/20" 
-                    : userRole === "RESEARCH_ANALYST"
-                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
-                      : "bg-primary/15 text-primary border border-primary/20"
-                }`}>
-                  {userRole === "ADMINISTRATOR" ? "Admin" : userRole === "RESEARCH_ANALYST" ? "Analyst" : "Investor"}
-                </span>
               </div>
             </div>
 
