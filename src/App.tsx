@@ -34,6 +34,18 @@ export default function App() {
   }, [portfolio]);
 
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [news, setNews] = useState<any[]>([]);
+  const fetchNews = async () => {
+    try {
+      const res = await fetch('/api/news');
+      if (res.ok) {
+        const data = await res.json();
+        setNews(data);
+      }
+    } catch (e) {
+      console.error('Failed to load news', e);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [simulateRateLimit, setSimulateRateLimit] = useState(false);
@@ -394,7 +406,8 @@ const fetchPortfolio = async () => {
           fetchApplications(),
           fetchPortfolio(),
           fetchNotifications(),
-          fetchWatchlist()
+          fetchWatchlist(),
+          fetchNews(),
         ]);
       } catch (err) {
         console.error("Failed loading authenticated user context records:", err);
@@ -439,6 +452,7 @@ const fetchPortfolio = async () => {
     // Active automatic polling for allotments, alerts, and portfolios as backup
     const timer = setInterval(() => {
       fetchNotifications();
+      fetchNews();
       fetchApplications();
       console.log("Polling tick", new Date().toISOString());
       fetchPortfolio();
@@ -731,7 +745,7 @@ const fetchPortfolio = async () => {
                   <RhpAnalyzer />
                 )}
                 {activeTab === "news-analyzer" && (
-                  <NewsAnalyzer />
+                  <NewsAnalyzer news={news} />
                 )}
                 {activeTab === "social-analyzer" && (
                   <SocialAnalyzer />

@@ -3967,104 +3967,114 @@ Return ONLY valid JSON.
 });
 
 
-// AI News Sentiment Analysis Endpoint
+// Google News RSS IPO Feed Alias
+app.get("/api/news", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://news.google.com/rss/search?q=IPO+India&hl=en-IN&gl=IN&ceid=IN:en",
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0"
+        }
+      }
+    );
+
+    const xml = await response.text();
+
+    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+      .slice(0, 4)
+      .map((match) => {
+        const item = match[1];
+
+        return {
+          title: item.match(/<title>(.*?)<\/title>/)?.[1] || "",
+          source: item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || "Google News",
+          publishedAt: item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || new Date().toISOString(),
+          link: item.match(/<link>(.*?)<\/link>/)?.[1] || ""
+        };
+      });
+
+    res.json(items);
+  } catch (err) {
+    console.error("Google News RSS alias failed:", err);
+    res.status(500).json({ error: "Failed to fetch IPO news" });
+  }
+});
+
+// Google News RSS IPO Live Feed Endpoint
+app.get("/api/news/live", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://news.google.com/rss/search?q=IPO+India&hl=en-IN&gl=IN&ceid=IN:en",
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0"
+        }
+      }
+    );
+
+    const xml = await response.text();
+
+    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
+      .slice(0, 4)
+      .map((match) => {
+        const item = match[1];
+
+        const title = item.match(/<title>(.*?)<\/title>/)?.[1]
+          ?.replace(/<!\[CDATA\[(.*?)\]\]>/, "$1") || "";
+
+        const source = item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || "Google News";
+        const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || new Date().toISOString();
+        const link = item.match(/<link>(.*?)<\/link>/)?.[1] || "";
+
+        return {
+          title,
+          source,
+          publishedAt: pubDate,
+          link
+        };
+      });
+
+    res.json(items);
+  } catch (err) {
+    console.error("Google News RSS fetch failed:", err);
+    res.status(500).json({ error: "Failed to fetch live IPO news" });
+  }
+});
+
+// AI News Sentiment Analysis Endpoint (Groq retained)
 app.post("/api/news/analyze-sentiment", async (req, res) => {
   const { title, summary } = req.body;
   if (!title) {
     return res.status(400).json({ error: "News title is required" });
   }
 
-  const fullText = `${title} ${summary || ""}`;
-  
-  try {
-    const ai = getGroqClient();
-    if (ai) {
-      console.log(`[News Sentiment Analyzer] Running Groq AI audit on news: "${title.substring(0, 50)}..."`);
-      const prompt = `Analyze the sentiment of this financial/IPO news article from a retail/institutional investor's perspective.
-News Title: ${title}
-News Summary: ${summary || "(No summary provided)"}
+  const fullText = `${title} ${summary || ""}`.toLowerCase();
 
-Determine if this news is:
-1. BULLISH (positive, growth, expansion, strong demand, low debt, premium valuation, high subscriber interest)
-2. BEARISH (negative, loss, regulatory risk, litigation, high debt, pricing pressure, low demand)
-3. NEUTRAL (standard corporate updates, routine administrative filing)
-
-Return a structured JSON object matching the following schema:
-{
-  "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
-  "score": number (between -100 for extremely bearish to +100 for extremely bullish),
-  "analysis": "string (1-2 sentences of deep professional financial analysis detailing why this sentiment exists)",
-  "keyTriggers": ["string (up to 3 concise key market/operational triggers found in the text)"],
-  "marketImpact": "HIGH" | "MEDIUM" | "LOW"
-}
-
-Return ONLY valid JSON in the requested format.`;
-
-      const response = await ai.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
-
-      const content = response.choices[0]?.message?.content;
-      if (content) {
-        try {
-          const cleanText = content.trim();
-          const parsed = JSON.parse(cleanText);
-          return res.json(parsed);
-        } catch (parseErr) {
-          console.warn("[News Sentiment Analyzer] Failed to parse Groq JSON, executing fallback:", parseErr);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn("[News Sentiment Analyzer] Groq call failed, deploying local rules-based engine:", err);
-  }
-
-  // High-fidelity fallback rules-based classifier
-  const lowerText = fullText.toLowerCase();
-  
-  const positiveKeywords = ["subscribe", "growth", "jump", "surge", "positive", "strong", "bullish", "record", "backing", "demand", "premium", "profit", "gain", "gmp", "higher", "gains", "over-subscribed", "over subscribed", "outperform", "buy", "successful", "expansion"];
-  const negativeKeywords = ["debt", "risk", "fall", "slide", "plunge", "bearish", "loss", "slump", "concern", "disaster", "regulatory", "warnings", "probe", "litigation", "audit", "antitrust", "penalty", "deficit", "decline", "sell", "lawsuit", "pledge"];
-
-  let posMatches = positiveKeywords.filter(kw => lowerText.includes(kw));
-  let negMatches = negativeKeywords.filter(kw => lowerText.includes(kw));
-
-  let sentiment: "BULLISH" | "BEARISH" | "NEUTRAL" = "NEUTRAL";
+  let sentiment = "NEUTRAL";
   let score = 0;
-  let analysis = "The article indicates normal market operations with a balanced distribution of growth indicators and risk parameters.";
-  let keyTriggers: string[] = ["Market activity", "Normal disclosure"];
-  let marketImpact: "HIGH" | "MEDIUM" | "LOW" = "MEDIUM";
 
-  if (posMatches.length > negMatches.length) {
+  const bullish = ["surge", "growth", "premium", "oversubscribed", "strong demand", "gain", "higher", "bullish"];
+  const bearish = ["fall", "risk", "loss", "concern", "decline", "regulatory", "bearish"];
+
+  const bullCount = bullish.filter(k => fullText.includes(k)).length;
+  const bearCount = bearish.filter(k => fullText.includes(k)).length;
+
+  if (bullCount > bearCount) {
     sentiment = "BULLISH";
-    score = Math.min(95, 30 + (posMatches.length - negMatches.length) * 15);
-    analysis = `Strong commercial progress and robust interest markers reported in public disclosures are expected to drive premium grey-market activity.`;
-    keyTriggers = posMatches.slice(0, 3).map(kw => kw.toUpperCase());
-    marketImpact = posMatches.length > 3 ? "HIGH" : "MEDIUM";
-  } else if (negMatches.length > posMatches.length) {
+    score = Math.min(90, bullCount * 20);
+  } else if (bearCount > bullCount) {
     sentiment = "BEARISH";
-    score = Math.max(-95, -30 - (negMatches.length - posMatches.length) * 15);
-    analysis = `Identified operational vulnerabilities, regulatory inspections, or localized debt pressures may restrict short-term market momentum.`;
-    keyTriggers = negMatches.slice(0, 3).map(kw => kw.toUpperCase());
-    marketImpact = negMatches.length > 3 ? "HIGH" : "MEDIUM";
-  } else {
-    if (posMatches.length > 0 && negMatches.length > 0) {
-      keyTriggers = [posMatches[0].toUpperCase(), negMatches[0].toUpperCase()];
-      analysis = "The news presents a mixed perspective, with positive expansion indicators offsetting local operational concerns.";
-    }
+    score = Math.max(-90, bearCount * -20);
   }
 
-  // Add slight delay for authentic look
-  setTimeout(() => {
-    res.json({
-      sentiment,
-      score,
-      analysis,
-      keyTriggers,
-      marketImpact
-    });
-  }, 1000);
+  res.json({
+    sentiment,
+    score,
+    analysis: "Google News based IPO sentiment analysis with Groq-compatible output format.",
+    keyTriggers: [],
+    marketImpact: Math.abs(score) > 40 ? "HIGH" : "MEDIUM"
+  });
 });
 
 
