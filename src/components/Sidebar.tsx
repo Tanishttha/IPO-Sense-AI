@@ -140,7 +140,7 @@ export default function Sidebar({
 
             <button
               onClick={onSignOutClick}
-              className="p-2 rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer max-md:flex max-md:items-center max-md:justify-center"
+              className="p-2 rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
               title="Sign Out"
             >
               <LogOut className="h-4 w-4" />
@@ -190,6 +190,25 @@ export default function Sidebar({
               <Moon className="h-3.5 w-3.5 text-indigo-500" />
             )}
           </button>
+        </div>
+        <div className="md:hidden flex justify-center">
+          {user ? (
+            <button
+              onClick={onSignOutClick}
+              className="flex items-center justify-center p-2 rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onSignInClick}
+              className="flex items-center justify-center p-2 rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
+              title="Sign In"
+            >
+              <LogIn className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </aside>
