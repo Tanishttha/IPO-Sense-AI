@@ -71,18 +71,24 @@ export default function NewsAnalyzer() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/rapid/news");
+      const res = await fetch("/api/news");
       if (!res.ok) {
         throw new Error("Failed to load live financial news feed.");
       }
       const data = await res.json();
       
-      // Map initial POSITIVE/NEGATIVE text from server into standard form
-      const formatted: NewsArticle[] = data.map((item: any) => ({
-        ...item,
-        aiSentiment: item.sentiment === "POSITIVE" ? "BULLISH" : item.sentiment === "NEGATIVE" ? "BEARISH" : "NEUTRAL",
-        aiScore: item.sentimentScore || 0,
-        aiEnriched: false, // Wait until explicit Groq analysis is requested or do a batch analysis
+      const formatted: NewsArticle[] = data.map((item: any, index: number) => ({
+        id: item.id || `news-${index}`,
+        title: item.title,
+        source: item.source || "Google News",
+        url: item.link || "#",
+        time: item.publishedAt || new Date().toISOString(),
+        summary: item.title,
+        sentiment: "NEUTRAL",
+        sentimentScore: 0,
+        aiSentiment: "NEUTRAL",
+        aiScore: 0,
+        aiEnriched: false,
         loadingAi: false
       }));
       
@@ -437,8 +443,8 @@ export default function NewsAnalyzer() {
                     {article.title}
                   </h4>
                   
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {article.summary}
+                  <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                    {article.summary.length > 120 ? `${article.summary.slice(0, 120)}...` : article.summary}
                   </p>
                 </div>
 
