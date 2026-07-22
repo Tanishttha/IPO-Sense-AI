@@ -543,11 +543,11 @@ const fetchPortfolio = async () => {
         <div className="flex-1 flex flex-col h-full bg-background overflow-hidden">
           
           {/* Global Header */}
-          <header className="h-16 border-b border-border bg-card px-8 flex justify-between items-center shrink-0">
+          <header className="h-16 border-b border-border bg-card px-3 md:px-8 flex justify-between items-center shrink-0">
             <div className="flex items-center space-x-3 text-xs">
               <div className="flex items-center space-x-1 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span className="font-mono">
+                <span className="font-mono text-[10px] md:text-xs">
                   {new Date().toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
@@ -555,54 +555,30 @@ const fetchPortfolio = async () => {
                   })}
                 </span>
               </div>
-              <div className="h-4 w-px bg-border"></div>
-              <div className="flex items-center space-x-1.5 bg-emerald-500/10 text-emerald-500 px-2.5 py-1 rounded-full font-bold">
-                <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span>Pricing API Live</span>
-              </div>
-              <div className="h-4 w-px bg-border"></div>
-              <button 
-                onClick={async () => {
-                  const nextSim = !simulateRateLimit;
-                  setSimulateRateLimit(nextSim);
-                  // Trigger a re-fetch immediately with the new state
-                  setTimeout(() => {
-                    fetchIpos();
-                  }, 100);
-                }}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold border transition-colors cursor-pointer ${
-                  simulateRateLimit 
-                    ? "bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/25 animate-pulse" 
-                    : "bg-muted border-border text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                }`}
-                title="Toggle API rate limit simulation (Status 429)"
-              >
-                {simulateRateLimit ? "⚠️ Simulated Limit Active (429)" : "Simulate API Rate Limit (429)"}
-              </button>
             </div>
- 
-            <div className="flex items-center space-x-4 text-xs font-mono">
-              <span className="text-muted-foreground">Server Connection Status:</span>
+
+            <div className="ml-auto flex items-center space-x-2 md:space-x-4 text-xs font-mono">
+              <span className="hidden md:inline text-muted-foreground">Server Connection Status:</span>
               <span className="font-bold text-emerald-500">OPTIMAL</span>
               
-              <div className="h-4 w-px bg-border"></div>
+              <div className="hidden sm:block h-4 w-px bg-border"></div>
               
               {/* Premium Theme Switcher toggle */}
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground transition-all duration-200 cursor-pointer"
+                className="flex items-center space-x-1 px-2 md:px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground transition-all duration-200 cursor-pointer"
                 title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
                 id="header-theme-toggle"
               >
                 {darkMode ? (
                   <>
                     <Sun className="h-3.5 w-3.5 text-amber-500" />
-                    <span className="text-[11px] font-sans font-medium">Light Mode</span>
+                    <span className="hidden md:inline text-[11px] font-sans font-medium">Light Mode</span>
                   </>
                 ) : (
                   <>
                     <Moon className="h-3.5 w-3.5 text-indigo-500" />
-                    <span className="text-[11px] font-sans font-medium">Dark Mode</span>
+                    <span className="hidden md:inline text-[11px] font-sans font-medium">Dark Mode</span>
                   </>
                 )}
               </button>
