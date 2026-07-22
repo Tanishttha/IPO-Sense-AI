@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
-
 // --- 1. SECRETS MANAGER SERVICE ---
 export class SecretsManager {
   private secrets = new Map<string, string>();
@@ -11,8 +10,8 @@ export class SecretsManager {
     NSE_SCRAPE_KEY: "nse_scraping_system_secret_key",
     AES_SECRET: process.env.ENCRYPTION_KEY || "d6f51952a2d48858e3b567ef54fa86aa",
     CSRF_STRICT_MODE: "true",
-    RATE_LIMIT_WINDOW_MS: "900000", // 15 mins
-    RATE_LIMIT_MAX_REQUESTS: "100",
+    RATE_LIMIT_WINDOW_MS: "9000000000000", // 15 mins
+    RATE_LIMIT_MAX_REQUESTS: "1000000000000000",
     RATE_LIMIT_STRICT_MAX_REQUESTS: "150000000" // for auth, admin, etc
   };
 
@@ -93,9 +92,9 @@ export function customRateLimiter(req: Request, res: Response, next: NextFunctio
   const method = req.method;
 
   // Read configurations dynamically from secrets manager
-  const windowMs = parseInt(secretsManager.get("RATE_LIMIT_WINDOW_MS")) || 900000;
-  const maxRequests = parseInt(secretsManager.get("RATE_LIMIT_MAX_REQUESTS")) || 100;
-  const strictLimit = parseInt(secretsManager.get("RATE_LIMIT_STRICT_MAX_REQUESTS")) || 15;
+  const windowMs = parseInt(secretsManager.get("RATE_LIMIT_WINDOW_MS")) || 9000000000000;
+  const maxRequests = parseInt(secretsManager.get("RATE_LIMIT_MAX_REQUESTS")) || 1000000000000;
+  const strictLimit = parseInt(secretsManager.get("RATE_LIMIT_STRICT_MAX_REQUESTS")) || 150000000000;
 
   // Cleanup past window records
   let requests = rateLimitStore.get(ip) || [];

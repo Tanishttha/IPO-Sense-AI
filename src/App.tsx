@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "./components/Sidebar";
 import DashboardOverview from "./components/DashboardOverview";
 import IpoDiscovery from "./components/IpoDiscovery";
@@ -27,6 +27,12 @@ export default function App() {
   const [ipos, setIpos] = useState<IPO[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioHolding[]>([]);
+  const portfolioRef = useRef<PortfolioHolding[]>([]);
+
+  useEffect(() => {
+    portfolioRef.current = portfolio;
+  }, [portfolio]);
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
@@ -75,30 +81,7 @@ export default function App() {
     }
   };
 
-  const handleRebalance = async (ipoId: string, action: string, message: string) => {
-    try {
-      const res = await fetch("/api/portfolio/adjust", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ipoId, action, message })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // Update both local states immediately
-        setPortfolio(data.portfolio);
-        setNotifications(data.notifications);
-        
-        // Also trigger a notification sound if supported
-        try {
-          const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-200.wav");
-          audio.volume = 0.35;
-          audio.play().catch(() => {});
-        } catch (_) {}
-      }
-    } catch (e) {
-      console.error("Failed to rebalance/adjust position", e);
-    }
-  };
+ 
 
   // Function to fetch real-time data from the NSE/IPO API using the API key (proxied securely via /api/nse-ipos)
   const fetchRealtimeIpos = async (): Promise<IPO[]> => {
@@ -121,18 +104,53 @@ export default function App() {
       // If we are simulating API limit exhaustion, jump straight to real-time fetch to catch the error
       if (simulateRateLimit) {
         const data = await fetchRealtimeIpos();
-        setIpos(data);
+        setIpos(data.map((ipo: any) => ({
+          ...ipo,
+          companyName: ipo.companyName || ipo.name,
+          price: ipo.price || ipo.priceBand,
+          gmp: ipo.gmp ?? 0,
+          aiScore: ipo.aiScore ?? 75,
+          aiConfidence: ipo.aiConfidence ?? 80,
+          riskScore: ipo.riskScore ?? 50,
+          recommendation: ipo.recommendation || "MODERATE"
+        })));
         return;
       }
 
       const res = await fetch("/api/ipos");
       if (res.ok) {
         const data = await res.json();
-        setIpos(data);
+        
+        const normalizedIpos = data.map((ipo: any) => ({
+          ...ipo,
+          companyName: ipo.companyName || ipo.name,
+          price: ipo.price || ipo.priceBand,
+          gmp: ipo.gmp ?? 0,
+          aiScore: ipo.aiScore ?? 75,
+          aiConfidence: ipo.aiConfidence ?? 80,
+          riskScore: ipo.riskScore ?? 50,
+          recommendation: ipo.recommendation || "MODERATE",
+          subscriptionOverall: ipo.subscriptionOverall ?? 0,
+          industry: ipo.industry || "Technology",
+          strengths: ipo.strengths || [],
+          risks: ipo.risks || [],
+          financials: ipo.financials || []
+        }));
+
+        setIpos(normalizedIpos);
       } else {
         console.warn("Primary /api/ipos route failed, falling back to real-time fetch...");
         const data = await fetchRealtimeIpos();
-        setIpos(data);
+        setIpos(data.map((ipo: any) => ({
+          ...ipo,
+          companyName: ipo.companyName || ipo.name,
+          price: ipo.price || ipo.priceBand,
+          gmp: ipo.gmp ?? 0,
+          aiScore: ipo.aiScore ?? 75,
+          aiConfidence: ipo.aiConfidence ?? 80,
+          riskScore: ipo.riskScore ?? 50,
+          recommendation: ipo.recommendation || "MODERATE"
+        })));
       }
     } catch (e: any) {
       console.error("Failed to load IPO indexes:", e);
@@ -142,7 +160,16 @@ export default function App() {
         // Try the real-time fetch to recover
         try {
           const data = await fetchRealtimeIpos();
-          setIpos(data);
+          setIpos(data.map((ipo: any) => ({
+            ...ipo,
+            companyName: ipo.companyName || ipo.name,
+            price: ipo.price || ipo.priceBand,
+            gmp: ipo.gmp ?? 0,
+            aiScore: ipo.aiScore ?? 75,
+            aiConfidence: ipo.aiConfidence ?? 80,
+            riskScore: ipo.riskScore ?? 50,
+            recommendation: ipo.recommendation || "MODERATE"
+          })));
         } catch (innerErr: any) {
           if (innerErr.message === "RATE_LIMIT_EXCEEDED") {
             setServiceUnavailable(true);
@@ -188,16 +215,114 @@ export default function App() {
     }
   };
 
-  const fetchPortfolio = async () => {
-    try {
-      const res = await fetch("/api/portfolio");
-      if (res.ok) {
-        const data = await res.json();
-        setPortfolio(data);
-      }
-    } catch (e) {
-      console.error(e);
+const fetchPortfolio = async () => {
+  try {
+    console.log("fetchPortfolio called", portfolioRef.current);
+    const symbols = portfolioRef.current.map(h => h.symbol).join(",");
+
+    if (!symbols) {
+      return;
     }
+
+    const response = await fetch(
+     `/api/groww/holdings/live?symbols=${encodeURIComponent(symbols)}`
+    );
+
+    if (!response.ok) return;
+
+    const responseJson = await response.json();
+    console.log("Live holdings response:", responseJson);
+    const liveData = Array.isArray(responseJson)
+      ? responseJson
+      : responseJson?.data?.content ||
+        responseJson?.data ||
+        responseJson?.holdings ||
+        [];
+
+    setPortfolio(prev => {
+      return prev.map(h => {
+        const live = liveData.find((x: any) =>
+          x.symbol === h.symbol ||
+          x.nseScripCode === h.symbol ||
+          x.ticker === h.symbol
+        );
+        const latestPrice = Number(
+          live?.latestPrice ??
+          live?.ltp ??
+          live?.lastPrice ??
+          live?.price
+        );
+        console.log("Matching live quote", {
+          holdingSymbol: h.symbol,
+          live,
+        });
+        console.log("Resolved latestPrice", latestPrice);
+        return {
+          ...h,
+          currentPrice:
+            Number.isFinite(latestPrice) && latestPrice > 0
+              ? latestPrice
+              : h.currentPrice,
+        };
+      });
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+  const handleAddHolding = async (
+    ipoId: string,
+    avgCost: number,
+    quantity: number
+  ) => {
+    const growwRes = await fetch(`/api/groww/holding/${encodeURIComponent(ipoId)}`);
+
+    let symbol = ipoId;
+    let companyName = ipoId;
+
+    if (growwRes.ok) {
+      const groww = await growwRes.json();
+      symbol =
+        groww?.nseScripCode ||
+        groww?.symbol ||
+        groww?.ticker ||
+        ipoId;
+
+      companyName =
+        groww?.companyName ||
+        groww?.company_short_name ||
+        groww?.title ||
+        groww?.name ||
+        ipoId;
+    } else {
+      const ipo = ipos.find(i => i.id === ipoId || i.symbol === ipoId || i.name === ipoId);
+      if (ipo) {
+        symbol = ipo.symbol;
+        companyName = ipo.companyName || ipo.name;
+      }
+    }
+
+    const holding = {
+      id: crypto.randomUUID(),
+      ipoId,
+      symbol,
+      companyName,
+      quantity,
+      avgCost,
+      currentPrice: avgCost,
+    } as PortfolioHolding;
+
+    console.log("Holding added", holding);
+    setPortfolio(prev => {
+      const next = [...prev, holding];
+      portfolioRef.current = next;
+      return next;
+    });
+
+    setTimeout(() => {
+      fetchPortfolio();
+    }, 100);
   };
 
   const handleClearNotifications = async () => {
@@ -315,8 +440,9 @@ export default function App() {
     const timer = setInterval(() => {
       fetchNotifications();
       fetchApplications();
+      console.log("Polling tick", new Date().toISOString());
       fetchPortfolio();
-    }, 12000);
+    }, 2000);
 
     return () => {
       clearInterval(timer);
@@ -377,21 +503,6 @@ export default function App() {
     }
   };
 
-  // Add Portfolio Holding handler
-  const handleAddHolding = async (ipoId: string, avgCost: number, quantity: number) => {
-    try {
-      const res = await fetch("/api/portfolio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ipoId, avgCost, quantity })
-      });
-      if (res.ok) {
-        await fetchPortfolio();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   // Total Portfolio value calculation
   const portfolioValue = portfolio.reduce((sum, h) => sum + (h.currentPrice * h.quantity), 0);
@@ -605,13 +716,12 @@ export default function App() {
                   <ListingDayAI />
                 )}
                 {activeTab === "portfolio" && (
-                  <PortfolioHoldings 
-                    holdings={portfolio} 
-                    ipos={ipos} 
+                  <PortfolioHoldings
+                    holdings={portfolio}
+                    ipos={ipos}
                     watchlist={watchlist}
                     onToggleWatchlist={handleToggleWatchlist}
                     onAddHolding={handleAddHolding}
-                    onRebalance={handleRebalance}
                   />
                 )}
                 {activeTab === "arena" && (

@@ -54,9 +54,9 @@ export default function Sidebar({
     { id: "arena", label: "Premium AI Arena", icon: Cpu },
     { id: "rhp-analyzer", label: "AI RHP Analyzer", icon: FileText },
     { id: "news-analyzer", label: "AI News Analyzer", icon: Newspaper },
-    { id: "social-analyzer", label: "AI Social Analyzer", icon: Share2 },
+    // { id: "social-analyzer", label: "AI Social Analyzer", icon: Share2 },
     { id: "market-intelligence", label: "AI Market Intelligence", icon: Gauge },
-    { id: "notifications", label: "Push Alerts Hub", icon: Bell },
+    // { id: "notifications", label: "Push Alerts Hub", icon: Bell },
   ];
 
 

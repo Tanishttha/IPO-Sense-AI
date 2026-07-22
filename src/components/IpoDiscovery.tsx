@@ -209,72 +209,69 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   const [directoryTab, setDirectoryTab] = useState<"list" | "gmp-chart" | "subscription-chart" | "timeline">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIpo, setSelectedIpo] = useState<IPO | null>(null);
-  
-  // IPO Comparison States
-  const [activeSubView, setActiveSubView] = useState<"directory" | "comparison" | "rapid-feeds" | "historical_listings">("directory");
-  const [compareIds, setCompareIds] = useState<string[]>([]);
-
-  // RapidAPI integration states
-  const [rapidUpcoming, setRapidUpcoming] = useState<any[]>([]);
-  const [rapidCalendar, setRapidCalendar] = useState<any[]>([]);
-  const [rapidNews, setRapidNews] = useState<any[]>([]);
-  const [loadingRapidUpcoming, setLoadingRapidUpcoming] = useState(false);
-  const [loadingRapidCalendar, setLoadingRapidCalendar] = useState(false);
-  const [loadingRapidNews, setLoadingRapidNews] = useState(false);
-  const [rapidSubTab, setRapidSubTab] = useState<"upcoming" | "calendar" | "market-news">("upcoming");
-
-  const fetchRapidUpcoming = async () => {
-    setLoadingRapidUpcoming(true);
-    try {
-      const res = await fetch("/api/rapid/upcoming");
-      if (res.ok) {
-        const data = await res.json();
-        setRapidUpcoming(data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch rapid upcoming ipos", e);
-    } finally {
-      setLoadingRapidUpcoming(false);
-    }
-  };
-
-  const fetchRapidCalendar = async () => {
-    setLoadingRapidCalendar(true);
-    try {
-      const res = await fetch("/api/rapid/calendar");
-      if (res.ok) {
-        const data = await res.json();
-        setRapidCalendar(data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch rapid calendar ipos", e);
-    } finally {
-      setLoadingRapidCalendar(false);
-    }
-  };
-
-  const fetchRapidNews = async () => {
-    setLoadingRapidNews(true);
-    try {
-      const res = await fetch("/api/rapid/news");
-      if (res.ok) {
-        const data = await res.json();
-        setRapidNews(data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch rapid market news", e);
-    } finally {
-      setLoadingRapidNews(false);
-    }
-  };
+  const [liveGrowwIpos, setLiveGrowwIpos] = useState<IPO[]>([]);
+  const [loadingLiveGroww, setLoadingLiveGroww] = useState(false);
 
   React.useEffect(() => {
-    if (activeSubView === "rapid-feeds") {
-      fetchRapidUpcoming();
-      fetchRapidCalendar();
-      fetchRapidNews();
-    }
-  }, [activeSubView]);
+    const loadLiveIpos = async () => {
+      setLoadingLiveGroww(true);
+      try {
+        const res = await fetch("/api/ipo/groww/open");
+        if (!res.ok) {
+          throw new Error(`IPO API failed: ${res.status}`);
+        }
+
+        const data = await res.json();
+        console.log("Groww IPO API response:", data);
+        const growwIpos = ((data?.ipoList || data || [])).map((ipo: any, index: number) => ({
+          ...ipo,
+          id: ipo.id || ipo.searchId || ipo.symbol || `groww-${index}`,
+          name: ipo.name || ipo.companyName || ipo.company || "Upcoming IPO",
+          symbol: ipo.symbol || "IPO",
+          status: ipo.status || "UPCOMING",
+          priceBand: ipo.priceBand || `₹${ipo.categories?.[0]?.minPrice || ipo.minPrice || "TBA"} - ₹${ipo.categories?.[0]?.maxPrice || ipo.maxPrice || "TBA"}`,
+          minPrice: ipo.minPrice || ipo.categories?.[0]?.minPrice || 0,
+          maxPrice: ipo.maxPrice || ipo.categories?.[0]?.maxPrice || 0,
+          lotSize: ipo.lotSize || ipo.categories?.[0]?.lotSize || 0,
+          issueSize: ipo.issueSize || (ipo.maxPrice && ipo.lotSize ? `₹${(ipo.maxPrice * ipo.lotSize).toLocaleString("en-IN")}` : "N/A"),
+          gmp: ipo.gmp ?? 0,
+          gmpPercent: ipo.gmpPercent ?? 0,
+          subscriptionOverall: ipo.subscriptionOverall ?? ipo.overallSubscription ?? 0,
+          subscriptionRetail: ipo.subscriptionRetail ?? 0,
+          subscriptionQib: ipo.subscriptionQib ?? 0,
+          subscriptionHni: ipo.subscriptionHni ?? 0,
+          categories: ipo.categories || [],
+          companyCode: ipo.companyCode,
+          searchId: ipo.searchId,
+          isSme: ipo.isSme,
+          isPreApply: ipo.isPreApply,
+          openDate: ipo.openDate || (ipo.bidStartTimestamp ? new Date(ipo.bidStartTimestamp).toISOString().split("T")[0] : "TBA"),
+          closeDate: ipo.closeDate || (ipo.bidEndTimestamp ? new Date(ipo.bidEndTimestamp).toISOString().split("T")[0] : "TBA"),
+          listingDate:ipo.listingDate || "TBA",
+          industry: ipo.industry || "N/A"
+        }));
+
+        if (!Array.isArray(growwIpos)) {
+          throw new Error("Invalid IPO response");
+        }
+
+        setLiveGrowwIpos(growwIpos as IPO[]);
+      } catch (error) {
+        console.error("IPO API fetch failed", error);
+        setLiveGrowwIpos(ipos || []);
+      } finally {
+        setLoadingLiveGroww(false);
+      }
+    };
+
+    loadLiveIpos();
+  }, [ipos]);
+  
+  // IPO Comparison States
+  const [activeSubView, setActiveSubView] = useState<"directory" | "comparison" | "historical_listings">("directory");
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  // RapidAPI integration states removed
 
   // Historical Listed IPOs from PostgreSQL db
   const [historicalIpos, setHistoricalIpos] = useState<any[]>([]);
@@ -389,8 +386,23 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   const [appSavedSuccess, setAppSavedSuccess] = useState(false);
 
   // Filters & Sorting logic
+  const sourceIpos = (liveGrowwIpos.length > 0 ? liveGrowwIpos : ipos).map((ipo: any) => ({
+    ...ipo,
+    name: ipo.name || ipo.companyName || "Upcoming IPO",
+    symbol: ipo.symbol || "IPO",
+    priceBand: ipo.priceBand || `₹${ipo.minPrice ?? "TBA"} - ₹${ipo.maxPrice ?? "TBA"}`,
+    issueSize: ipo.issueSize && ipo.issueSize !== "N/A" ? ipo.issueSize : (ipo.maxPrice && ipo.lotSize ? `₹${(ipo.maxPrice * ipo.lotSize).toLocaleString("en-IN")}` : "N/A"),
+    gmp: ipo.gmp ?? 0,
+    gmpPercent: ipo.gmpPercent ?? 0,
+    subscriptionOverall: ipo.subscriptionOverall ?? ipo.overallSubscription ?? 0,
+    subscriptionRetail: ipo.subscriptionRetail ?? 0,
+    subscriptionQib: ipo.subscriptionQib ?? 0,
+    subscriptionHni: ipo.subscriptionHni ?? 0,
+    status: ipo.status || "UPCOMING"
+  }));
+
   // Dynamic Industry (Sector) categories
-  const sectors = Array.from(new Set(ipos.map((ipo) => ipo.industry).filter(Boolean)));
+  const sectors = Array.from(new Set(sourceIpos.map((ipo) => ipo.industry).filter(Boolean)));
 
   // Helper to parse issue size to a numeric Cr value
   const getIssueSizeInCr = (sizeStr: string): number => {
@@ -400,8 +412,8 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
     return isNaN(val) ? 0 : val;
   };
 
-  const filteredIpos = ipos.filter(ipo => {
-    const matchesSearch = ipo.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredIpos = sourceIpos.filter(ipo => {
+    const matchesSearch = (ipo.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
                           ipo.symbol.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || ipo.status === statusFilter;
     const matchesSector = sectorFilter === "ALL" || ipo.industry === sectorFilter;
@@ -451,7 +463,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   const handleChartClick = (state: any) => {
     if (state && state.activePayload && state.activePayload[0]) {
       const sym = state.activePayload[0].payload.name;
-      const origIpo = ipos.find(i => i.symbol === sym);
+      const origIpo = sourceIpos.find(i => i.symbol === sym);
       if (origIpo) handleSelectIpo(origIpo);
     }
   };
@@ -850,7 +862,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
         <div>
           <h2 className="text-2xl font-bold tracking-tight">IPO Directory & Intelligence</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Discover active filings, analyze core prospectuses, and verify Grey Market margins.
+            Discover live IPO openings, analyze prospectuses, and track Grey Market intelligence.
           </p>
         </div>
 
@@ -881,17 +893,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                 {compareIds.length}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setActiveSubView("rapid-feeds")}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeSubView === "rapid-feeds"
-                ? "bg-card text-foreground shadow-sm font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Compass className="h-3.5 w-3.5" />
-            <span>RapidAPI Global Feed</span>
           </button>
           <button
             onClick={() => setActiveSubView("historical_listings")}
@@ -1119,7 +1120,13 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
               {directoryTab === "timeline" && renderIpoTimeline()}
               {directoryTab === "list" && (
                 <>
-                  {sortedIpos.length === 0 ? (
+                  {loadingLiveGroww ? (
+                    <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
+                      <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
+                      <h3 className="mt-4 text-lg font-semibold">Loading Live IPO Data</h3>
+                      <p className="text-sm text-muted-foreground mt-1">Fetching current IPO listings...</p>
+                    </div>
+                  ) : sortedIpos.length === 0 ? (
                     <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
                       <Compass className="h-10 w-10 text-muted-foreground mx-auto animate-spin" />
                       <h3 className="mt-4 text-lg font-semibold">No IPOs match your search</h3>
@@ -1127,7 +1134,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                     </div>
                   ) : (
                     sortedIpos.map((ipo) => {
-                      const isGmpPositive = ipo.gmp >= 0;
+                      const isGmpPositive = (ipo.gmp ?? 0) >= 0;
                       return (
                         <div
                           key={ipo.id}
@@ -1213,7 +1220,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                   </div>
 
                   {/* Quick details strip */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-4 border-t border-border">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-5 pt-4 border-t border-border">
                     <div>
                       <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Price Band</span>
                       <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.priceBand}</p>
@@ -1225,14 +1232,22 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                     <div>
                       <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Grey Market Premium</span>
                       <p className={`text-sm font-bold mt-0.5 flex items-center ${isGmpPositive ? "text-emerald-500" : "text-rose-500"}`}>
-                        ₹{ipo.gmp} ({ipo.gmpPercent > 0 ? "+" : ""}{ipo.gmpPercent}%)
+                        ₹{ipo.gmp ?? 0} ({(ipo.gmpPercent ?? 0) > 0 ? "+" : ""}{ipo.gmpPercent ?? 0}%)
                       </p>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Overall Subscription</span>
                       <p className="text-sm font-semibold text-foreground mt-0.5">
-                        {ipo.status === "UPCOMING" ? "Not Open Yet" : `${ipo.subscriptionOverall}x`}
+                        {ipo.status === "UPCOMING" && !ipo.subscriptionOverall ? "Not Open Yet" : `${ipo.subscriptionOverall ?? 0}x`}
                       </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Open Date</span>
+                      <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.openDate || "TBA"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Close Date</span>
+                      <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.closeDate || "TBA"}</p>
                     </div>
                   </div>
                 </div>
@@ -1678,7 +1693,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
         </div>
         
         <div className="flex flex-wrap gap-2 mt-4">
-          {ipos.map(ipo => {
+          {sourceIpos.map(ipo => {
             const isSelected = compareIds.includes(ipo.id);
             return (
               <button

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Briefcase, 
   ArrowUpRight, 
@@ -38,6 +38,10 @@ interface PortfolioProps {
 
 export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleWatchlist, onAddHolding, onRebalance }: PortfolioProps) {
   const [selectedIpoId, setSelectedIpoId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showResults, setShowResults] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [avgCost, setAvgCost] = useState("");
   const [quantity, setQuantity] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,11 +55,45 @@ export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleW
   const [historyData, setHistoryData] = useState<{ day: string; Value: number }[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+const [searchResults, setSearchResults] = useState<IPO[]>([]);
+const [searchLoading, setSearchLoading] = useState(false);
+const [liveHoldings, setLiveHoldings] = useState<PortfolioHolding[]>([]);
+
   // Calculations
-  const totalInvestment = holdings.reduce((sum, h) => sum + (h.avgCost * h.quantity), 0);
-  const totalCurrentValue = holdings.reduce((sum, h) => sum + (h.currentPrice * h.quantity), 0);
+  const displayHoldings = liveHoldings.length > 0 ? liveHoldings : holdings;
+  const totalInvestment = displayHoldings.reduce((sum, h) => sum + (h.avgCost * h.quantity), 0);
+  const totalCurrentValue = displayHoldings.reduce((sum, h) => sum + (h.currentPrice * h.quantity), 0);
   const totalPnL = totalCurrentValue - totalInvestment;
   const pnlPercent = totalInvestment > 0 ? (totalPnL / totalInvestment) * 100 : 0;
+
+  const refreshLivePrices = async () => {
+    if (!holdings.length) return;
+
+    try {
+      const updatedHoldings = await Promise.all(
+        holdings.map(async (h) => {
+          try {
+            const response = await fetch(`/api/groww/price/${h.symbol}`);
+            if (!response.ok) return h;
+
+            const live = await response.json();
+
+            return {
+              ...h,
+              currentPrice: Number(live.ltp ?? h.currentPrice),
+            };
+          } catch {
+            return h;
+          }
+        })
+      );
+
+      setLiveHoldings(updatedHoldings);
+      console.debug("Updated Groww holdings", updatedHoldings);
+    } catch (error) {
+      console.error("Failed to refresh Groww holdings", error);
+    }
+  };
 
   const fetchHistory = async () => {
     setLoadingHistory(true);
@@ -108,14 +146,82 @@ export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleW
   };
 
   useEffect(() => {
+    refreshLivePrices();
     fetchHistory();
   }, [holdings, totalCurrentValue]);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+useEffect(() => {
+  const controller = new AbortController();
+
+  const searchGroww = async () => {
+    const q = searchQuery.trim();
+
+    if (q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+
+      const res = await fetch(
+        `/api/groww/search/${encodeURIComponent(q)}`,
+        {
+          signal: controller.signal,
+        }
+      );
+
+      if (!res.ok) {
+        setSearchResults([]);
+        return;
+      }
+
+      const json = await res.json();
+      console.log("Groww search JSON:", json);
+
+      const results = (json?.data?.content ?? [])
+        .filter((item: any) => item.entity_type === "Stocks")
+        .map((item: any) => ({
+          id: item.nse_scrip_code || item.id,
+          name: item.company_short_name || item.title,
+          symbol: item.nse_scrip_code || item.bse_scrip_code || "",
+        }));
+
+      console.log("Mapped Groww results:", results);
+      setSearchResults(results);
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.error(err);
+      }
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  searchGroww();
+
+  return () => controller.abort();
+}, [searchQuery]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedIpoId || !avgCost || !quantity) return;
     setLoading(true);
     try {
+      console.log("Submitting holding", {
+        selectedIpoId,
+        avgCost,
+        quantity,
+      });
       await onAddHolding(selectedIpoId, Number(avgCost), Number(quantity));
       setSuccess(true);
       // Let's also record the updated snapshot to our database after a brief delay
@@ -140,6 +246,9 @@ export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleW
         setAvgCost("");
         setQuantity("");
         setSelectedIpoId("");
+        setSearchQuery("");
+        setHighlightedIndex(-1);
+        setShowResults(false);
       }, 1500);
     } catch (err) {
       console.error(err);
@@ -443,7 +552,7 @@ export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleW
                   </tr>
                 </thead>
                 <tbody>
-                  {holdings.map((h) => {
+                  {displayHoldings.map((h) => {
                     const cost = h.avgCost * h.quantity;
                     const val = h.currentPrice * h.quantity;
                     const pnl = val - cost;
@@ -475,17 +584,74 @@ export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleW
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="block font-semibold text-muted-foreground mb-1 uppercase font-mono tracking-wider">Select Listed IPO</label>
-              <select
-                value={selectedIpoId}
-                onChange={(e) => setSelectedIpoId(e.target.value)}
-                required
-                className="w-full bg-muted/40 border border-border rounded-xl p-2.5 text-xs focus:outline-none"
-              >
-                <option value="">Choose IPO...</option>
-                {ipos.map(i => (
-                  <option key={i.id} value={i.id}>{i.name} ({i.symbol})</option>
-                ))}
-              </select>
+              {ipos.length === 0 && (
+                <p className="text-xs text-rose-500 mb-2">
+                  No IPOs loaded. Check the parent component that passes the `ipos` prop.
+                </p>
+              )}
+              <div className="relative" ref={searchRef}>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  placeholder="Search IPO name or symbol..."
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowResults(true);
+                    setHighlightedIndex(-1);
+                  }}
+                  onFocus={() => setShowResults(true)}
+                  onKeyDown={(e) => {
+                    if (!showResults) return;
+
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setHighlightedIndex((prev) =>
+                        Math.min(prev + 1, searchResults.length - 1)
+                      );
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const ipo = searchResults[highlightedIndex];
+                      if (ipo) {
+                        setSelectedIpoId(ipo.symbol);
+                        setSearchQuery(`${ipo.name} (${ipo.symbol})`);
+                        setShowResults(false);
+                      }
+                    } else if (e.key === "Escape") {
+                      setShowResults(false);
+                    }
+                  }}
+                  className="w-full bg-muted/40 border border-border rounded-xl p-2.5 text-xs focus:outline-none focus:border-primary"
+                />
+
+                {showResults && (
+                  <div className="absolute z-50 mt-2 w-full max-h-[300px] overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
+                    {searchLoading ? (
+                      <div className="p-3 text-xs text-muted-foreground">Searching Groww...</div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-3 text-xs text-muted-foreground">No IPOs found.</div>
+                    ) : (
+                      searchResults.map((ipo, index) => (
+                        <button
+                          key={ipo.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedIpoId(ipo.symbol);
+                            setSearchQuery(`${ipo.name} (${ipo.symbol})`);
+                            setShowResults(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 border-b border-border last:border-b-0 hover:bg-muted transition ${highlightedIndex === index ? "bg-muted" : ""}`}
+                        >
+                          <div className="font-semibold text-xs">{ipo.name}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{ipo.symbol}</div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -535,7 +701,7 @@ export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleW
       {/* AI Risk Monitor Section */}
       <div className="pt-6 border-t border-border/80">
         <AiRiskMonitor 
-          holdings={holdings}
+          holdings={displayHoldings}
           watchlist={watchlist}
           ipos={ipos}
           onToggleWatchlist={onToggleWatchlist}

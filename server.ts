@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import Groq from "groq-sdk";
 import jwt from "jsonwebtoken";
+import { PDFParse } from "pdf-parse";
 
 // Import PostgreSQL Database & authentication middleware
 import { db as postgresDb } from "./src/db/index.ts";
@@ -928,8 +929,7 @@ const REAL_NSE_IPOS = [
 ];
 
 // Global runtime IPOs dataset variable
-let globalIposList = REAL_NSE_IPOS;
-
+let globalIposList: any[] = [];
 const REALTIME_CACHE_FILE = path.join(process.cwd(), "iposense_realtime.json");
 const CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes cache duration
 
@@ -1053,14 +1053,18 @@ async function getIposDataset(): Promise<any[]> {
 // Asynchronous global synchronizer
 async function refreshIposList() {
   try {
-    globalIposList = await getIposDataset();
+    globalIposList = await fetchRapidUpcomingIpos();
+
+    console.log(
+      `Synced ${globalIposList.length} IPOs via RapidAPI successfully.`
+    );
+
   } catch (err) {
-    console.error("Failed to run active listings synchronization:", err);
+    console.error("RapidAPI IPO sync failed:", err);
+    globalIposList = REAL_NSE_IPOS;
   }
 }
 
-// Trigger initial sync in background
-refreshIposList();
 
 // RapidAPI Integrated Fetchers
 async function fetchRapidUpcomingIpos(): Promise<any[]> {
@@ -1068,24 +1072,41 @@ async function fetchRapidUpcomingIpos(): Promise<any[]> {
   
   try {
     console.log("Fetching Upcoming IPOs from upcoming-ipo-calendar.p.rapidapi.com...");
-    const res = await fetch("https://upcoming-ipo-calendar.p.rapidapi.com/", {
-      headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": "upcoming-ipo-calendar.p.rapidapi.com"
-      }
-    });
+    const res = await fetch(
+
+  "https://indian-ipo-wallah.p.rapidapi.com/main_ipo_public?limit=20&offset=0",
+
+  {
+
+    headers: {
+
+      "Content-Type": "application/json",
+
+      "x-rapidapi-key": apiKey,
+
+      "x-rapidapi-host": "indian-ipo-wallah.p.rapidapi.com"
+
+    }
+
+  }
+
+);
     if (res.ok) {
       const data = await res.json();
+      console.log("RAPID IPO RESPONSE:", JSON.stringify(data).slice(0,1000));
       if (Array.isArray(data) && data.length > 0) {
         return data.map((item: any, idx: number) => ({
           id: item.id || `rapid-up-${idx}-${Math.random().toString(36).substr(2, 4)}`,
-          name: item.name || item.company || "Unknown Company",
-          symbol: item.symbol || item.ticker || "UNKNOWN",
-          priceBand: item.priceBand || item.price || "TBA",
-          issueSize: item.issueSize || item.size || "TBA",
-          openDate: item.openDate || item.date || "TBA",
-          closeDate: item.closeDate || "TBA",
-          listingDate: item.listingDate || "TBA",
+          name: item.name_of_ipo || item.name || item.company || "Unknown Company",
+          symbol: item.symbol || item.ticker || (item.name_of_ipo ? item.name_of_ipo.replace(/\s+/g, "").toUpperCase().slice(0, 12) : "UNKNOWN"),
+          priceBand: item.issue_price || item.priceBand || item.price || "TBA",
+          issueSize: item.issue_size || item.issueSize || item.size || "TBA",
+          openDate: item.ipo_open_date || item.openDate || item.date || "TBA",
+          closeDate: item.ipo_close_date || item.closeDate || "TBA",
+          listingDate: item.ipo_listing_date || item.listingDate || "TBA",
+          aboutCompany: item.about_company || "Company information unavailable",
+          issueObjectives: item.issue_objectives || "General corporate purposes",
+          prospectusLink: item.prospectus_link || null,
           status: "UPCOMING",
           exchange: item.exchange || "NSE",
           source: "RapidAPI Live"
@@ -1096,74 +1117,11 @@ async function fetchRapidUpcomingIpos(): Promise<any[]> {
     console.warn("upcoming-ipo-calendar.p.rapidapi.com request failed, using high-quality fallback:", err);
   }
 
-  // Fallback high-quality local dataset
-  return [
-    {
-      id: "rapid-up-1",
-      name: "NTPC Green Energy Ltd",
-      symbol: "NTPCGREEN",
-      priceBand: "₹102 - ₹108",
-      issueSize: "₹10,000 Cr",
-      openDate: "2026-08-05",
-      closeDate: "2026-08-08",
-      listingDate: "2026-08-14",
-      status: "UPCOMING",
-      exchange: "NSE",
-      source: "RapidAPI (Key Active / Sandbox Fallback)"
-    },
-    {
-      id: "rapid-up-2",
-      name: "Bajaj Housing Finance Ltd",
-      symbol: "BAJAJHFL",
-      priceBand: "₹66 - ₹70",
-      issueSize: "₹6,560 Cr",
-      openDate: "2026-08-12",
-      closeDate: "2026-08-14",
-      listingDate: "2026-08-19",
-      status: "UPCOMING",
-      exchange: "NSE",
-      source: "RapidAPI (Key Active / Sandbox Fallback)"
-    },
-    {
-      id: "rapid-up-3",
-      name: "Acme Solar Holdings Ltd",
-      symbol: "ACMESOLAR",
-      priceBand: "₹275 - ₹289",
-      issueSize: "₹3,000 Cr",
-      openDate: "2026-08-18",
-      closeDate: "2026-08-21",
-      listingDate: "2026-08-27",
-      status: "UPCOMING",
-      exchange: "NSE",
-      source: "RapidAPI (Key Active / Sandbox Fallback)"
-    },
-    {
-      id: "rapid-up-4",
-      name: "Brainbees Solutions Ltd (FirstCry)",
-      symbol: "FIRSTCRY",
-      priceBand: "₹440 - ₹465",
-      issueSize: "₹4,193 Cr",
-      openDate: "2026-08-22",
-      closeDate: "2026-08-26",
-      listingDate: "2026-09-02",
-      status: "UPCOMING",
-      exchange: "NSE",
-      source: "RapidAPI (Key Active / Sandbox Fallback)"
-    },
-    {
-      id: "rapid-up-5",
-      name: "Ola Electric Mobility Ltd",
-      symbol: "OLAELEC",
-      priceBand: "₹72 - ₹76",
-      issueSize: "₹6,145 Cr",
-      openDate: "2026-08-28",
-      closeDate: "2026-08-31",
-      listingDate: "2026-09-07",
-      status: "UPCOMING",
-      exchange: "NSE",
-      source: "RapidAPI (Key Active / Sandbox Fallback)"
-    }
-  ];
+  // No live data received from RapidAPI
+  // Return empty only if you want no fallback. For IPO Discovery keep existing dataset available.
+  console.warn("No live IPO data received from RapidAPI, using NSE dataset fallback");
+
+  return REAL_NSE_IPOS;
 }
 
 async function fetchRapidIpoCalendar(): Promise<any[]> {
@@ -1906,9 +1864,9 @@ app.get("/api/admin/security/secrets", requireAuth, async (req: AuthRequest, res
     csrfStrictMode: secretsManager.get("CSRF_STRICT_MODE") === "true",
     activeCsrfTokensCount: activeCsrfTokens.size,
     blacklistedTokensCount: revokedRefreshTokens.size,
-    rateLimitWindowMs: parseInt(secretsManager.get("RATE_LIMIT_WINDOW_MS")) || 900000,
-    rateLimitMaxRequests: parseInt(secretsManager.get("RATE_LIMIT_MAX_REQUESTS")) || 100,
-    rateLimitStrictMaxRequests: parseInt(secretsManager.get("RATE_LIMIT_STRICT_MAX_REQUESTS")) || 15
+    rateLimitWindowMs: parseInt(secretsManager.get("RATE_LIMIT_WINDOW_MS")) || 9000000000,
+    rateLimitMaxRequests: parseInt(secretsManager.get("RATE_LIMIT_MAX_REQUESTS")) || 100000000000,
+    rateLimitStrictMaxRequests: parseInt(secretsManager.get("RATE_LIMIT_STRICT_MAX_REQUESTS")) || 15000000
   });
 });
 
@@ -1988,6 +1946,7 @@ async function writeApiUsageLog(userId: number | null, endpoint: string, provide
 
 // --- STARTUP SCHEMA SEEDER ---
 async function seedMissingDatabaseTables() {
+  refreshIposList();
   try {
     // 1. Seed Historical IPOs if empty
     const existingHistIpos = await postgresDb.select().from(dbHistoricalIpos).limit(1);
@@ -2205,6 +2164,48 @@ app.get("/api/admin/api-usage-logs", requireAuth, async (req: AuthRequest, res) 
   } catch (err: any) {
     console.error("Fetch api logs failed:", err);
     res.status(500).json({ error: "Failed to fetch api metric graphs." });
+  }
+});
+
+
+// Groww IPO Proxy Route (server-side fetch to bypass browser CORS)
+app.get("/api/ipo/groww/open", async (req, res) => {
+  try {
+    const response = await fetch("https://groww.in/v1/api/primaries/v1/ipo/open?v=2", {
+      method: "GET",
+      headers: {
+        "Accept": "application/json, text/plain, */*",
+        "x-platform": "web",
+        "X-APP-ID": "growwWeb",
+        "x-device-type": "desktop"
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: `Groww IPO API failed: ${response.status}`
+      });
+    }
+
+    const data = await response.json();
+
+const results = (data?.data?.content || [])
+  .filter((item: any) => item.entity_type === "Stocks")
+  .map((item: any) => ({
+    id: item.search_id,
+    companyName: item.title,
+    symbol: item.nse_scrip_code,
+    nseScripCode: item.nse_scrip_code,
+    searchId: item.search_id,
+    isin: item.isin,
+  }));
+
+res.json(results);
+  } catch (error) {
+    console.error("Groww IPO proxy failed:", error);
+    return res.status(500).json({
+      error: "Failed to fetch Groww IPO data"
+    });
   }
 });
 
@@ -2604,9 +2605,260 @@ app.get("/api/nse-ipos", async (req, res) => {
   }
 });
 
-// 1. Fetch all IPOs
-app.get("/api/ipos", (req, res) => {
-  res.json(globalIposList);
+// 1. Fetch all IPOs from Groww
+app.get("/api/ipos", async (req, res) => {
+  try {
+    console.log("Fetching IPO data from Groww...");
+
+    const response = await fetch("https://groww.in/v1/api/primaries/v1/ipo/open?v=2", {
+      method: "GET",
+      headers: {
+        "Accept": "application/json, text/plain, */*",
+        "x-platform": "web",
+        "X-APP-ID": "growwWeb",
+        "x-device-type": "desktop"
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: `Groww IPO API failed: ${response.status}`
+      });
+    }
+
+    const data = await response.json();
+
+    const ipoList = (data.ipoList || []).map((item: any, index: number) => {
+      const regularCategory = item.categories?.find((c: any) => c.category === "IND") || item.categories?.[0];
+      return {
+        id: item.searchId || item.symbol || `groww-${index}`,
+        symbol: item.symbol || "IPO",
+        name: item.companyName || "Upcoming IPO",
+        companyName: item.companyName || "Upcoming IPO",
+        isin: item.isin || "",
+        logoUrl: item.logoUrl || "",
+        priceBand: regularCategory
+          ? `₹${regularCategory.minPrice} - ₹${regularCategory.maxPrice}`
+          : "TBA",
+        minPrice: regularCategory?.minPrice || 0,
+        maxPrice: regularCategory?.maxPrice || 0,
+        lotSize: regularCategory?.lotSize || 1,
+        issueSize: item.issueSize || (regularCategory?.minBidQuantity && regularCategory?.maxPrice ? `₹${(regularCategory.minBidQuantity * regularCategory.maxPrice).toLocaleString()}` : "N/A"),
+        gmp: item.gmp ?? 0,
+        gmpPercent: item.gmpPercent ?? 0,
+        subscriptionOverall: item.overallSubscription ?? 0,
+        subscriptionRetail: item.categories?.find((c: any) => c.category === "IND")?.subscription || 0,
+        subscriptionQib: item.categories?.find((c: any) => c.category === "QIB")?.subscription || 0,
+        subscriptionHni: item.categories?.find((c: any) => c.category === "HNI")?.subscription || 0,
+        openDate: item.bidStartTimestamp
+          ? new Date(item.bidStartTimestamp).toISOString().split("T")[0]
+          : "TBA",
+        closeDate: item.bidEndTimestamp
+          ? new Date(item.bidEndTimestamp).toISOString().split("T")[0]
+          : "TBA",
+        listingDate: "TBA",
+        status: item.isPreApply ? "UPCOMING" : "ACTIVE",
+        exchange: "NSE",
+        source: "Groww Live",
+        aiScore: 0,
+        aiConfidence: 0,
+        riskScore: 0,
+        categories: item.categories || [],
+        companyCode: item.companyCode || null,
+        searchId: item.searchId || null,
+        isSme: item.isSme || false,
+        logoUrl: item.logoUrl || "",
+        bidStartTimestamp: item.bidStartTimestamp || null,
+        bidEndTimestamp: item.bidEndTimestamp || null,
+        isPreApply: item.isPreApply || false
+      };
+    });
+
+    globalIposList = ipoList;
+    console.log("GROWW IPO DATA RECEIVED:", globalIposList.length);
+
+    res.json(globalIposList);
+  } catch (err) {
+    console.error("IPO API Error:", err);
+    res.status(500).json({
+      error: "Failed to fetch IPO data from Groww"
+    });
+  }
+});
+
+// --- Groww Portfolio Holdings & Search Endpoints ---
+// Groww Search Endpoint
+app.get("/api/groww/search/:query", async (req, res) => {
+  try {
+    const query = req.params.query;
+    if (!query) {
+      return res.status(400).json({ error: "Query parameter required" });
+    }
+    const url = `https://groww.in/v1/api/search/v3/query/global/st_p_query?is_us_stocks=1&page=0&query=${encodeURIComponent(query)}&size=10&web=true`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json, text/plain, */*",
+        "x-platform": "web",
+        "X-APP-ID": "growwWeb",
+        "x-device-type": "desktop"
+      }
+    });
+    if (!response.ok) {
+      return res.status(500).json({ error: "Groww search failed" });
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("Groww search failed:", err);
+    res.status(500).json({ error: "Groww search failed" });
+  }
+});
+
+// Groww Live Price Endpoint
+app.get("/api/groww/price/:symbol", async (req, res) => {
+  try {
+    const symbol = req.params.symbol.toUpperCase();
+
+    const liveUrl = `https://groww.in/v1/api/stocks_data/v1/tr_live_book/exchange/NSE/segment/CASH/${encodeURIComponent(symbol)}/latest`;
+
+    const response = await fetch(liveUrl, {
+      headers: {
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0",
+        "x-platform": "web",
+        "X-APP-ID": "growwWeb",
+        "x-device-type": "desktop"
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: "Groww live price API failed",
+        symbol
+      });
+    }
+
+    const data = await response.json();
+
+    const buy = data?.buyBook?.[1]?.price;
+    const sell = data?.sellBook?.[1]?.price;
+    const ltp = sell || buy || null;
+
+    if (!ltp) {
+      return res.status(404).json({
+        error: "Live price not found",
+        symbol
+      });
+    }
+
+    return res.json({
+      symbol,
+      ltp,
+      source: "Groww MARKET_DEPTH"
+    });
+  } catch (err) {
+    console.error("Groww price error", err);
+    return res.status(500).json({
+      error: "Groww price fetch failed"
+    });
+  }
+});
+
+// Groww Holding Endpoint
+app.get("/api/groww/holding/:symbol", async (req, res) => {
+  try {
+    const symbol = req.params.symbol;
+    if (!symbol) {
+      return res.status(400).json({ error: "Symbol parameter required" });
+    }
+    // Parallel fetch chart and live book
+    const chartUrl = `https://groww.in/v1/api/charting_service/v2/chart/delayed/exchange/NSE/segment/CASH/${encodeURIComponent(symbol)}/daily?intervalInMinutes=1&minimal=true`;
+    const bookUrl = `https://groww.in/v1/api/stocks_data/v1/tr_live_book/exchange/NSE/segment/CASH/${encodeURIComponent(symbol)}/latest`;
+    const [chartResp, bookResp] = await Promise.all([
+      fetch(chartUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json, text/plain, */*",
+          "x-platform": "web",
+          "X-APP-ID": "growwWeb",
+          "x-device-type": "desktop"
+        }
+      }),
+      fetch(bookUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json, text/plain, */*",
+          "x-platform": "web",
+          "X-APP-ID": "growwWeb",
+          "x-device-type": "desktop"
+        }
+      })
+    ]);
+    if (!chartResp.ok || !bookResp.ok) {
+      return res.status(500).json({ error: "Failed to fetch Groww holding data" });
+    }
+    const chart = await chartResp.json();
+    const liveBook = await bookResp.json();
+    const candles = Array.isArray(chart.candles) ? chart.candles : [];
+    const latestPrice = liveBook?.ltp || (candles.length ? candles[candles.length - 1][1] : null);
+    res.json({
+      symbol,
+      latestPrice,
+      candles,
+      marketDepth: liveBook,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Groww holding fetch failed:", err);
+    res.status(500).json({ error: "Failed to fetch Groww holding data" });
+  }
+});
+
+// Groww Holdings Live Endpoint (batch)
+app.get("/api/groww/holdings/live", async (req, res) => {
+  try {
+    const symbolsParam = req.query.symbols;
+    if (!symbolsParam || typeof symbolsParam !== "string") {
+      return res.status(400).json({ error: "symbols query parameter required (comma separated)" });
+    }
+
+    const symbols = symbolsParam.split(",").map(s => s.trim()).filter(Boolean);
+
+    const results = await Promise.all(symbols.map(async (symbol) => {
+      try {
+        const url = `https://groww.in/stocks/${symbol.toLowerCase()}`;
+        const response = await fetch(url, {
+          headers: {
+            "Accept": "text/html",
+            "User-Agent": "Mozilla/5.0"
+          }
+        });
+
+        const html = await response.text();
+
+        const match = html.match(new RegExp(`"${symbol}"\\s*:\\s*\\{[^}]*"ltp"\\s*:\\s*([0-9.]+)`));
+        const latestPrice = match ? Number(match[1]) : null;
+
+        return {
+          symbol,
+          latestPrice,
+          lastUpdated: new Date().toISOString()
+        };
+      } catch (err) {
+        return {
+          symbol,
+          latestPrice: null,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+    }));
+
+    res.json(results);
+  } catch (err) {
+    console.error("Groww holdings live fetch failed:", err);
+    res.status(500).json({ error: "Failed to fetch Groww holdings live data" });
+  }
 });
 
 // 2. Fetch specific IPO
@@ -3569,243 +3821,149 @@ setInterval(async () => {
 
 
 // RHP Analyzer Endpoint
+// RHP Analyzer Endpoint
 app.post("/api/rhp/analyze", async (req, res) => {
   const { pdfName, pdfBase64 } = req.body;
+
   if (!pdfName) {
-    return res.status(400).json({ error: "Prospectus file name is required" });
+    return res.status(400).json({
+      error: "Prospectus file name is required",
+    });
+  }
+
+  if (!pdfBase64) {
+    return res.status(400).json({
+      error: "Prospectus PDF content is required",
+    });
   }
 
   try {
     const ai = getGroqClient();
-    if (ai) {
-      console.log(`[RHP Analyzer] Parsing RHP PDF using Groq intelligence engine: ${pdfName}`);
-      
-      const prompt = `Analyze this Red Herring Prospectus (RHP) PDF and return a structured JSON response matching the following strict schema:
+
+    if (!ai) {
+      return res.status(500).json({
+        error: "Groq client is not configured.",
+      });
+    }
+
+    console.log(
+      `[RHP Analyzer] Parsing RHP PDF using Groq intelligence engine: ${pdfName}`
+    );
+
+    // Prevent Groq 413 Request Too Large
+  // Decode Base64 -> PDF -> Plain Text
+const cleanBase64 = pdfBase64.includes(",")
+  ? pdfBase64.split(",")[1]
+  : pdfBase64;
+
+const pdfBuffer = Buffer.from(cleanBase64, "base64");
+
+const parser = new PDFParse({
+  data: pdfBuffer,
+});
+
+const parsedPdf = await parser.getText();
+await parser.destroy();
+
+const documentContent = parsedPdf.text
+  .replace(/\s+/g, " ")
+  .trim()
+  .slice(0, 25000);
+
+console.log(`[RHP Analyzer] PDF text length: ${parsedPdf.text.length}`);
+console.log(`[RHP Analyzer] Sending ${documentContent.length} chars to Groq`);
+
+    const prompt = `
+You are an expert SEBI IPO analyst.
+
+Analyze ONLY the uploaded Red Herring Prospectus.
+
+Never invent:
+- company name
+- issue size
+- price band
+- promoters
+- financial numbers
+- risks
+
+If something is unavailable, return null.
+
+Uploaded document:
+
+${documentContent}
+
+Return ONLY valid JSON.
+
 {
-  "companyName": "string (the official company name from prospectus)",
-  "symbol": "string (expected market ticker/symbol or uppercase short name)",
-  "industry": "string (e.g., technology, e-commerce, banking, consumer goods)",
+  "companyName": "",
+  "symbol": "",
+  "industry": "",
   "summary": {
-    "about": "string (comprehensive overview of the business model and products/services)",
-    "freshIssue": "string (amount of fresh capital raised, e.g. ₹500 Cr)",
-    "ofs": "string (amount of offer for sale from promoters/investors, e.g. ₹200 Cr)",
-    "totalIssue": "string (total IPO size, e.g. ₹700 Cr)",
-    "priceBand": "string (expected price band or ₹ range)",
-    "listingObjectives": ["string (objective 1)", "string (objective 2)"],
-    "promoters": "string (promoters details, names and post-IPO dilution info)"
+    "about": "",
+    "freshIssue": "",
+    "ofs": "",
+    "totalIssue": "",
+    "priceBand": "",
+    "listingObjectives": [],
+    "promoters": ""
   },
   "risks": {
-    "internal": [
-      { "risk": "string", "impact": "High" | "Medium" | "Low", "details": "string (deep analytical context)" }
-    ],
-    "external": [
-      { "risk": "string", "impact": "High" | "Medium" | "Low", "details": "string (deep analytical context)" }
-    ]
+    "internal": [],
+    "external": []
   },
   "financials": {
-    "years": ["string (e.g., FY22, FY23, FY24)"],
-    "revenue": [number (revenue in ₹ Cr corresponding to years)],
-    "ebitda": [number (EBITDA in ₹ Cr corresponding to years)],
-    "pat": [number (Profit After Tax in ₹ Cr corresponding to years)],
-    "ratios": [
-      { "name": "string (e.g., Debt-to-Equity)", "values": ["string (value 1)", "string (value 2)", "string (value 3)"] },
-      { "name": "string (e.g., Return on Equity)", "values": ["string (value 1)", "string (value 2)", "string (value 3)"] }
-    ]
+    "years": [],
+    "revenue": [],
+    "ebitda": [],
+    "pat": [],
+    "ratios": []
   },
-  "redFlags": [
-    { "title": "string", "severity": "High" | "Medium" | "Low", "description": "string (specific legal litigations, regulatory audits, high related-party transactions, or accounting concerns)" }
-  ]
+  "redFlags": []
 }
+`;
 
-Make sure to extract accurate numbers if visible, or infer them. Return ONLY valid JSON in the requested structure. Do not include markdown code block formatting like \`\`\`json.`;
+    const response = await ai.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: {
+        type: "json_object",
+      },
+    });
 
-      const response = await ai.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      });
+    const content = response.choices?.[0]?.message?.content;
 
-      const content = response.choices[0]?.message?.content;
-      if (content) {
-        try {
-          const cleanText = content.trim();
-          const parsed = JSON.parse(cleanText);
-          return res.json(parsed);
-        } catch (parseErr) {
-          console.warn("[RHP Analyzer] Failed to parse Groq JSON output, falling back to heuristics:", parseErr);
-        }
-      }
+    if (!content) {
+      throw new Error("Groq returned an empty response.");
     }
-  } catch (error) {
-    console.error("[RHP Analyzer] Groq parsing failed, falling back to heuristic templates:", error);
+
+    try {
+      const parsed = JSON.parse(content.trim());
+      return res.json(parsed);
+    } catch (err) {
+      console.error("[RHP Analyzer] Invalid JSON received from Groq");
+      console.error(content);
+
+      return res.status(500).json({
+        error: "Groq returned invalid JSON.",
+      });
+    }
+  } catch (error: any) {
+    console.error("========== RHP ANALYZER ERROR ==========");
+    console.error(error);
+    console.error(error?.stack);
+    console.error("========================================");
+
+    return res.status(500).json({
+      error:
+        error?.message ||
+        "Unable to analyze the uploaded RHP.",
+    });
   }
-
-  const nameLower = pdfName.toLowerCase();
-  let companyData = {
-    companyName: "Acme Enterprise Solutions Limited",
-    symbol: "ACME",
-    industry: "Enterprise SaaS & Cloud Systems",
-    summary: {
-      about: "Acme Solutions is a leading multinational cloud infrastructure and enterprise business applications provider. They build modular enterprise resource planning (ERP) suites, specialized logistics optimization platforms, and real-time ledger engines integrated with artificial intelligence.",
-      freshIssue: "₹650.00 Cr",
-      ofs: "₹150.00 Cr",
-      totalIssue: "₹800.00 Cr",
-      priceBand: "₹520 - ₹550 per share",
-      listingObjectives: [
-        "Financing purchase of data center equipment and hardware accessories",
-        "Funding of key inorganic business acquisitions and strategic alliances",
-        "General corporate requirements and business development operations"
-      ],
-      promoters: "Promoted by Acme Ventures Group LLC, with post-IPO promoter shareholding diluting from 82.4% to 64.2%."
-    },
-    risks: {
-      internal: [
-        { risk: "Customer Concentration", impact: "High", details: "Top 3 global accounts account for over 41.5% of software licensing revenue, introducing structural stability risk." },
-        { risk: "Sovereign Cloud Compliance", impact: "Medium", details: "Sovereign-restricted region servers are subject to strict data-sovereignty mandates, causing potential operational delays." },
-        { risk: "IP Litigation", impact: "Low", details: "Pending patents in localized databases are subject to minor open-source dependency legal checks." }
-      ],
-      external: [
-        { risk: "Foreign Exchange Risk", impact: "Medium", details: "Operating globally incurs substantial currency fluctuations across USD, EUR, and INR transactions." },
-        { risk: "Intense Market Competition", impact: "High", details: "Competing directly with giant global cloud providers with significantly larger marketing budgets and capital reserves." }
-      ]
-    },
-    financials: {
-      years: ["FY24", "FY25", "FY26"],
-      revenue: [385, 592, 840],
-      ebitda: [81, 142, 218],
-      pat: [34, 68, 114],
-      ratios: [
-        { name: "Debt-to-Equity", values: ["0.28", "0.19", "0.11"] },
-        { name: "ROE", values: ["14.2%", "18.6%", "22.1%"] },
-        { name: "Net Profit Margin", values: ["8.8%", "11.5%", "13.6%"] }
-      ]
-    },
-    redFlags: [
-      { title: "Auditor Qualifications", severity: "Medium", description: "Audit observation noted minor delays in accounting of accrued software subscription revenues during FY24 transition phase." },
-      { title: "Promoter Pledge Ratio", severity: "High", description: "Approximately 25% of pre-IPO promoter equity shares are currently pledged as security for corporate working capital overdraft facilities." },
-      { title: "Outstanding Litigations", severity: "Medium", description: "Pending tax litigations amounting to ₹12.4 Cr are active under regional direct tax dispute appeal panels." }
-    ]
-  };
-
-  // Heuristic adjustments based on filename keywords
-  if (nameLower.includes("swiggy") || nameLower.includes("food") || nameLower.includes("delivery")) {
-    companyData.companyName = "Swiggy Limited";
-    companyData.symbol = "SWIGGY";
-    companyData.industry = "Hyperlocal Commerce & Food Tech";
-    companyData.summary.about = "Swiggy is India's leading consumer technology platform, operating a multi-tier hyperlocal commerce network. Their business leverages an on-demand delivery fleet to power food delivery, quick commerce (Instamart), out-of-home dining, and event booking.";
-    companyData.summary.freshIssue = "₹3,750.00 Cr";
-    companyData.summary.ofs = "₹6,664.00 Cr";
-    companyData.summary.totalIssue = "₹10,414.00 Cr";
-    companyData.summary.priceBand = "₹371 - ₹390 per share";
-    companyData.summary.listingObjectives = [
-      "Investment in subsidiary Scootsy for expansion of dark store footprint",
-      "Investment in technology infrastructure and specialized AI search discovery platforms",
-      "Brand marketing and promotion to drive active transacting user expansion"
-    ];
-    companyData.summary.promoters = "Professionally managed company with no identifiable promoter group, pre-IPO backed by major global venture capital groups.";
-    companyData.risks.internal = [
-      { risk: "Accumulated Losses", impact: "High", details: "The company has historically incurred net losses and may continue to experience operating losses in near-future phases." },
-      { risk: "Gig Worker Management", impact: "High", details: "Operational success relies heavily on delivery partner retention and regulatory gig-worker welfare law shifts." }
-    ];
-    companyData.financials = {
-      years: ["FY22", "FY23", "FY24"],
-      revenue: [5705, 8263, 11247],
-      ebitda: [-2810, -2140, -1250],
-      pat: [-3620, -4179, -2350],
-      ratios: [
-        { name: "Debt-to-Equity", values: ["0.05", "0.02", "0.01"] },
-        { name: "ROE", values: ["-42%", "-31%", "-14%"] },
-        { name: "Order Growth (YoY)", values: ["45%", "28%", "34%"] }
-      ]
-    };
-    companyData.redFlags = [
-      { title: "CCI Investigation", severity: "High", description: "Subject to an ongoing antitrust investigation by the Competition Commission of India (CCI) regarding partner restaurant practices." },
-      { title: "Valuation vs Profitability", severity: "High", description: "IPO pricing parameters reflect premium tech valuations despite carrying significant accumulated net operating losses." }
-    ];
-  } else if (nameLower.includes("ola") || nameLower.includes("electric") || nameLower.includes("ev")) {
-    companyData.companyName = "Ola Electric Mobility Limited";
-    companyData.symbol = "OLAELEC";
-    companyData.industry = "Electric Vehicles & Energy Storage";
-    companyData.summary.about = "Ola Electric is India's largest pure-play electric vehicle manufacturer. They operate a vertically integrated EV platform, encompassing product development, manufacturing (Ola Futurefactory), and battery cell development (Ola Gigafactory).";
-    companyData.summary.freshIssue = "₹5,500.00 Cr";
-    companyData.summary.ofs = "₹645.00 Cr";
-    companyData.summary.totalIssue = "₹6,145.00 Cr";
-    companyData.summary.priceBand = "₹72 - ₹76 per share";
-    companyData.summary.listingObjectives = [
-      "Capital expenditure for cell manufacturing capacity expansion (Phase 1B)",
-      "Repayment of outstanding high-interest corporate loans and long-term debt",
-      "Investment in proprietary powertrain research and EV chassis engineering"
-    ];
-    companyData.summary.promoters = "Promoted by Bhavish Aggarwal and ANI Technologies Private Limited, holding 45.4% pre-issue equity.";
-    companyData.risks.internal = [
-      { risk: "Subsidy Dependency", impact: "High", details: "Operating margins are extremely sensitive to Indian EV subsidy frameworks (FAME-II, EMPS) and PLI certifications." },
-      { risk: "R&D Execution", impact: "Medium", details: "Delays in mass production of proprietary 4680 lithium-ion cells at the Gigafactory could impact cost-efficiency targets." }
-    ];
-    companyData.financials = {
-      years: ["FY22", "FY23", "FY24"],
-      revenue: [373, 2630, 5009],
-      ebitda: [-743, -1190, -1040],
-      pat: [-784, -1472, -1584],
-      ratios: [
-        { name: "Debt-to-Equity", values: ["0.65", "0.45", "0.32"] },
-        { name: "ROE", values: ["-68%", "-54%", "-42%"] },
-        { name: "Gross Margin", values: ["5.2%", "12.8%", "18.4%"] }
-      ]
-    };
-    companyData.redFlags = [
-      { title: "Service Backlog & Consumer Court Cases", severity: "High", description: "Substantial service backup and quality claims have triggered regional consumer regulatory body safety audits and active reviews." },
-      { title: "Related-Party Land Lease", severity: "Medium", description: "Manufacturing assets are built on lands leased from promoter-owned entities with recurring material lease transaction outflows." }
-    ];
-  } else if (nameLower.includes("hyundai") || nameLower.includes("car") || nameLower.includes("auto")) {
-    companyData.companyName = "Hyundai Motor India Limited";
-    companyData.symbol = "HYUNDAI";
-    companyData.industry = "Automotive Manufacturing";
-    companyData.summary.about = "Hyundai Motor India is the second-largest passenger car manufacturer in the Indian market. Part of the global Hyundai Motor Group, they design and manufacture highly popular SUV, sedan, and EV brands with deep regional supply-chain operations.";
-    companyData.summary.freshIssue = "₹0.00 Cr (Entirely OFS)";
-    companyData.summary.ofs = "₹27,870.00 Cr";
-    companyData.summary.totalIssue = "₹27,870.00 Cr";
-    companyData.summary.priceBand = "₹1,860 - ₹1,960 per share";
-    companyData.summary.listingObjectives = [
-      "No fresh proceeds; all IPO funds are distributed to the promoting holding group",
-      "Enhancement of brand equity and establishing a liquid public trading market for shares in India"
-    ];
-    companyData.summary.promoters = "Hyundai Motor Company (Korea), holding 100% pre-IPO stake, diluting exactly 17.5% through Offer for Sale.";
-    companyData.risks.internal = [
-      { risk: "OFS Structure Only", impact: "Medium", details: "The company will not receive any capital proceeds from this mega issue for operational or capacity expansion." },
-      { risk: "Royalty Outflows", impact: "High", details: "Substantial royalty payments are remitted to parent company Hyundai Korea, capped at 3.5% of sales, which dampens net margins." }
-    ];
-    companyData.financials = {
-      years: ["FY22", "FY23", "FY24"],
-      revenue: [47362, 60307, 69829],
-      ebitda: [5372, 7548, 9124],
-      pat: [2862, 4709, 5928],
-      ratios: [
-        { name: "Debt-to-Equity", values: ["0.08", "0.04", "0.02"] },
-        { name: "ROE", values: ["14.5%", "19.8%", "22.4%"] },
-        { name: "EBITDA Margin", values: ["11.3%", "12.5%", "13.1%"] }
-      ]
-    };
-    companyData.redFlags = [
-      { title: "Parent Royalties & Governance", severity: "High", description: "Royalty agreement terms are managed unilaterally by the parent entity, leading to potential related-party transfer pricing revisions." },
-      { title: "Transfer Pricing Audits", severity: "Medium", description: "Subject to recurring international transfer pricing reviews regarding import pricing of proprietary engine blocks from parent factories." }
-    ];
-  }
-
-  // Add random variation to mock numbers if it is a completely generic upload to look hyper-realistic!
-  if (!nameLower.includes("swiggy") && !nameLower.includes("ola") && !nameLower.includes("hyundai")) {
-    const randomSeed = Math.floor(Math.random() * 100);
-    companyData.companyName = pdfName.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").toUpperCase() + " LIMITED";
-    companyData.symbol = pdfName.replace(/\.pdf$/i, "").substring(0, 6).toUpperCase();
-    companyData.summary.freshIssue = `₹${400 + randomSeed} Cr`;
-    companyData.summary.ofs = `₹${100 + (randomSeed % 50)} Cr`;
-    companyData.summary.totalIssue = `₹${500 + randomSeed + (randomSeed % 50)} Cr`;
-    companyData.summary.priceBand = `₹${150 + randomSeed} - ₹${175 + randomSeed}`;
-  }
-
-  // Artificial analysis processing latency for highly realistic UX
-  setTimeout(() => {
-    res.json(companyData);
-  }, 1800);
 });
 
 
@@ -4612,6 +4770,10 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`IPOSense AI Server listening on port ${PORT}`);
+//
+
+
+// sabse last me ye hona chahiye
+app.listen(PORT, () => {
+  console.log(`Server running on ${PORT}`);
 });

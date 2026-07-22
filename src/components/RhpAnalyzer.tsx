@@ -275,39 +275,6 @@ export default function RhpAnalyzer() {
               )}
             </div>
 
-            {/* Quick-select samples */}
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-              <h4 className="text-xs font-semibold text-foreground flex items-center">
-                <Layers className="h-4 w-4 text-primary mr-1.5" />
-                Or Simulate High-Fidelity Prospectus Audits (Sandbox)
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                Don't have an RHP file handy? Select one of our reference company layouts to view the deep analytical results instantly.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                <button
-                  onClick={() => processSelectedFile(new File([], "swiggy-rhp-prospectus.pdf"))}
-                  className="p-3 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left text-xs transition-all cursor-pointer hover:border-primary/40 group"
-                >
-                  <span className="font-bold text-foreground group-hover:text-primary transition-colors block">Swiggy Limited</span>
-                  <span className="text-[10px] text-muted-foreground block mt-0.5">Food Tech / Hyperlocal</span>
-                </button>
-                <button
-                  onClick={() => processSelectedFile(new File([], "ola-electric-mobility-rhp.pdf"))}
-                  className="p-3 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left text-xs transition-all cursor-pointer hover:border-primary/40 group"
-                >
-                  <span className="font-bold text-foreground group-hover:text-primary transition-colors block">Ola Electric Mobility</span>
-                  <span className="text-[10px] text-muted-foreground block mt-0.5">Automotive / EV Platform</span>
-                </button>
-                <button
-                  onClick={() => processSelectedFile(new File([], "hyundai-motor-india-rhp.pdf"))}
-                  className="p-3 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left text-xs transition-all cursor-pointer hover:border-primary/40 group"
-                >
-                  <span className="font-bold text-foreground group-hover:text-primary transition-colors block">Hyundai Motor India</span>
-                  <span className="text-[10px] text-muted-foreground block mt-0.5">Manufacturing / Automobiles</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Right Side Info Panel */}
@@ -463,7 +430,7 @@ export default function RhpAnalyzer() {
               }`}
             >
               <AlertTriangle className="h-4 w-4" />
-              <span>Risk Factors ({result.risks.internal.length + result.risks.external.length})</span>
+              <span>Risk Factors ({(result.risks?.internal?.length ?? 0) + (result.risks?.external?.length ?? 0)})</span>
             </button>
             <button
               onClick={() => setActiveSubTab("financials")}
@@ -485,7 +452,7 @@ export default function RhpAnalyzer() {
               }`}
             >
               <ShieldAlert className="h-4 w-4" />
-              <span>Red Flags & Litigations ({result.redFlags.length})</span>
+              <span>Red Flags & Litigations ({result.redFlags?.length ?? 0})</span>
             </button>
           </div>
 
@@ -538,7 +505,7 @@ export default function RhpAnalyzer() {
                   </p>
                   
                   <div className="space-y-3 pt-2">
-                    {result.summary.listingObjectives.map((obj, idx) => (
+                    {(result.summary.listingObjectives ?? []).map((obj, idx) => (
                       <div key={idx} className="flex items-start space-x-3 bg-muted/20 hover:bg-muted/40 p-3 rounded-xl border border-border/60 transition-all text-xs">
                         <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0">
                           {idx + 1}
@@ -562,12 +529,12 @@ export default function RhpAnalyzer() {
                     Internal Operational Risks
                   </h3>
                   <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
-                    {result.risks.internal.length} identified
+                    {result.risks?.internal?.length ?? 0} identified
                   </span>
                 </div>
 
                 <div className="space-y-4 pt-1">
-                  {result.risks.internal.map((item, idx) => (
+                  {(result.risks?.internal ?? []).map((item, idx) => (
                     <div key={idx} className="bg-muted/10 border border-border/80 rounded-xl p-4 space-y-1.5 hover:border-indigo-500/20 transition-all">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-foreground">{item.risk}</span>
@@ -597,12 +564,12 @@ export default function RhpAnalyzer() {
                     External Market & Regulatory Risks
                   </h3>
                   <span className="text-[10px] font-mono bg-violet-500/10 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full">
-                    {result.risks.external.length} identified
+                    {result.risks?.external?.length ?? 0} identified
                   </span>
                 </div>
 
                 <div className="space-y-4 pt-1">
-                  {result.risks.external.map((item, idx) => (
+                  {(result.risks?.external ?? []).map((item, idx) => (
                     <div key={idx} className="bg-muted/10 border border-border/80 rounded-xl p-4 space-y-1.5 hover:border-violet-500/20 transition-all">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-foreground">{item.risk}</span>
@@ -786,7 +753,7 @@ export default function RhpAnalyzer() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                  {result.redFlags.map((flag, idx) => (
+                  {(result.redFlags ?? []).map((flag, idx) => (
                     <div 
                       key={idx} 
                       className={`border rounded-xl p-4.5 space-y-2 transition-all relative overflow-hidden ${
