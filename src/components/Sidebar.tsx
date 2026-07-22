@@ -61,14 +61,14 @@ export default function Sidebar({
 
 
   return (
-    <aside className="w-64 border-r flex flex-col justify-between h-screen sticky top-0 bg-card transition-colors duration-300 border-border">
+    <aside className="w-64 max-md:w-16 shrink-0 border-r flex flex-col justify-between h-screen sticky top-0 bg-card transition-colors duration-300 border-border overflow-hidden">
       <div>
         {/* Branding */}
-        <div className="p-6 border-b border-border flex items-center space-x-3">
+        <div className="p-6 max-md:p-3 border-b border-border flex items-center space-x-3 max-md:justify-center">
           <div className="bg-primary/10 p-2 rounded-xl flex items-center justify-center border border-primary/20">
             <Sparkles className="h-6 w-6 text-primary animate-pulse" />
           </div>
-          <div>
+          <div className="max-md:hidden">
             <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
               IPOSense AI
             </h1>
@@ -79,7 +79,7 @@ export default function Sidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 max-md:p-2 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -88,14 +88,14 @@ export default function Sidebar({
                 key={item.id}
                 id={`sidebar-item-${item.id}`}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                className={`w-full flex items-center justify-start max-md:justify-center space-x-3 max-md:space-x-0 px-4 max-md:px-2 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/10 font-semibold"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
-                <span>{item.label}</span>
+                <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                <span className="max-md:hidden">{item.label}</span>
               </button>
             );
           })}
@@ -103,10 +103,10 @@ export default function Sidebar({
       </div>
 
       {/* Footer Controls */}
-      <div className="p-4 border-t border-border space-y-3">
+      <div className="p-4 max-md:p-2 border-t border-border space-y-3">
         {user ? (
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 max-md:hidden">
               {user.photoURL ? (
                 <img 
                   src={user.photoURL} 
@@ -140,14 +140,14 @@ export default function Sidebar({
 
             <button
               onClick={onSignOutClick}
-              className="p-1.5 rounded-lg border border-border bg-background hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-all cursor-pointer"
+              className="p-2 rounded-xl border border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer max-md:flex max-md:items-center max-md:justify-center"
               title="Sign Out"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between max-md:hidden">
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border">
                 G
@@ -173,7 +173,7 @@ export default function Sidebar({
         )}
 
         {/* Bottom utility controls */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-1 max-md:hidden">
           <span className="text-[10px] text-muted-foreground font-mono flex items-center">
             <Cloud className="h-3 w-3 mr-1 text-muted-foreground/60" /> Live Gateway
           </span>

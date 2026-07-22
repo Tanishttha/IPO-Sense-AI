@@ -33,6 +33,7 @@ interface NewsArticle {
   title: string;
   source: string;
   url: string;
+  link?: string;
   time: string;
   summary: string;
   // Keyword-based preset sentiment (from the server's news route)
@@ -83,9 +84,9 @@ export default function NewsAnalyzer() {
         source: item.source || "Google News",
         url: item.link || "#",
         time: item.publishedAt || new Date().toISOString(),
-        summary: item.title,
-        sentiment: "NEUTRAL",
-        sentimentScore: 0,
+        summary: item.summary || item.description || item.title,
+        sentiment: item.sentiment,
+        sentimentScore: item.sentimentScore,
         aiSentiment: "NEUTRAL",
         aiScore: 0,
         aiEnriched: false,
@@ -101,6 +102,44 @@ export default function NewsAnalyzer() {
     }
   };
 
+  const autoAnalyzeArticle = async (article: NewsArticle) => {
+    try {
+      const res = await fetch("/api/news/analyze-sentiment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": (await fetch("/api/auth/csrf-token", { credentials: "include" }).then(r => r.json())).csrfToken
+        },
+        body: JSON.stringify({
+          title: article.title,
+          summary: article.summary
+        })
+      });
+
+      if (!res.ok) return;
+
+      const result = await res.json();
+
+      setNewsList(prev =>
+        prev.map(item =>
+          item.id === article.id
+            ? {
+                ...item,
+                aiEnriched: true,
+                aiSentiment: result.sentiment || result.aiSentiment || "NEUTRAL",
+                aiScore: result.score ?? result.sentimentScore ?? result.aiScore ?? 0,
+                aiAnalysis: result.analysis || result.aiAnalysis || "AI sentiment analysis completed.",
+                aiKeyTriggers: result.keyTriggers || result.aiKeyTriggers,
+                aiMarketImpact: result.marketImpact || result.aiMarketImpact
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error("Auto Groq analysis failed", err);
+    }
+  };
+
   // Perform Groq AI Sentiment analysis on a specific article card
   const analyzeArticleSentiment = async (articleId: string) => {
     const article = newsList.find(n => n.id === articleId);
@@ -112,7 +151,10 @@ export default function NewsAnalyzer() {
     try {
       const res = await fetch("/api/news/analyze-sentiment", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": (await fetch("/api/auth/csrf-token", { credentials: "include" }).then(r => r.json())).csrfToken
+        },
         body: JSON.stringify({
           title: article.title,
           summary: article.summary
@@ -129,8 +171,8 @@ export default function NewsAnalyzer() {
         ...n,
         aiEnriched: true,
         aiSentiment: analysisResult.sentiment,
-        aiScore: analysisResult.score,
-        aiAnalysis: analysisResult.analysis,
+        aiScore: analysisResult.score ?? analysisResult.sentimentScore ?? analysisResult.aiScore ?? 0,
+        aiAnalysis: analysisResult.analysis || analysisResult.aiAnalysis || "AI sentiment analysis completed.",
         aiKeyTriggers: analysisResult.keyTriggers,
         aiMarketImpact: analysisResult.marketImpact,
         loadingAi: false
@@ -164,7 +206,10 @@ export default function NewsAnalyzer() {
     try {
       const res = await fetch("/api/news/analyze-sentiment", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": (await fetch("/api/auth/csrf-token", { credentials: "include" }).then(r => r.json())).csrfToken
+        },
         body: JSON.stringify({
           title: customTitle,
           summary: customSummary
@@ -357,7 +402,7 @@ export default function NewsAnalyzer() {
               </div>
 
               <p className="text-[11px] text-foreground mt-2 leading-relaxed">
-                {customResult.analysis}
+                {customResult.analysis || "AI sentiment analysis completed."}
               </p>
 
               {customResult.keyTriggers && customResult.keyTriggers.length > 0 && (
@@ -439,9 +484,14 @@ export default function NewsAnalyzer() {
                     <span className="font-bold text-primary">{article.source}</span>
                   </div>
 
-                  <h4 className="text-xs font-extrabold text-foreground leading-snug hover:text-primary transition-colors">
+                  <a
+                    href={article.url || article.link || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-extrabold text-foreground leading-snug hover:text-primary transition-colors block cursor-pointer"
+                  >
                     {article.title}
-                  </h4>
+                  </a>
                   
                   {article.summary && article.summary.replace(/\s-\s[^-]+$/, "").trim() !== article.title.replace(/\s-\s[^-]+$/, "").trim() && (
                     <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">
@@ -466,7 +516,7 @@ export default function NewsAnalyzer() {
                         </span>
                       </div>
                       <p className="text-[10px] text-muted-foreground leading-normal bg-muted/30 p-2 rounded-lg border border-border/40">
-                        {article.aiAnalysis}
+                        {article.aiAnalysis || "AI sentiment analysis completed."}
                       </p>
                     </div>
                   ) : (

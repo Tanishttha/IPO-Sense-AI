@@ -4035,7 +4035,14 @@ app.get("/api/news", async (req, res) => {
         };
       });
 
-    res.json(items);
+    const analyzedItems = items.map((item) => ({
+      ...item,
+      sentiment: "NEUTRAL",
+      score: 0,
+      analysis: "Automatic AI sentiment analysis disabled to prevent rate-limit usage."
+    }));
+
+    res.json(analyzedItems);
   } catch (err) {
     console.error("Google News RSS alias failed:", err);
     res.status(500).json({ error: "Failed to fetch IPO news" });
@@ -4105,11 +4112,60 @@ app.get("/api/news/live", async (req, res) => {
   }
 });
 
-// AI News Sentiment Analysis Endpoint (Groq retained)
+// AI News Sentiment Analysis Endpoint (Groq powered)
 app.post("/api/news/analyze-sentiment", async (req, res) => {
   const { title, summary } = req.body;
+
   if (!title) {
     return res.status(400).json({ error: "News title is required" });
+  }
+
+  const ai = getGroqClient();
+
+  if (ai) {
+    try {
+      const response = await ai.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "user",
+            content: `You are an expert IPO market sentiment classifier.
+
+Analyze the news headline and summary carefully. Do NOT return NEUTRAL by default. Identify bullish signals like subscription growth, premium, gains, rise, strong demand, oversubscription, expansion, approvals, partnerships, positive investor response. Identify bearish signals like losses, decline, weak demand, risk, warning, concerns, regulatory issues.
+
+Headline:
+${title}
+
+Summary:
+${summary || ""}
+
+Return ONLY JSON:
+{
+  "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
+  "score": number between -100 and 100,
+  "reason": "short explanation"
+}`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const content = response.choices[0]?.message?.content;
+
+      if (content) {
+        const parsed = JSON.parse(content.trim());
+
+        return res.json({
+          sentiment: parsed.sentiment || "NEUTRAL",
+          score: Number(parsed.score) || 0,
+          analysis: parsed.reason || "Groq AI sentiment analysis completed.",
+          keyTriggers: [],
+          marketImpact: Math.abs(Number(parsed.score) || 0) > 40 ? "HIGH" : "MEDIUM"
+        });
+      }
+    } catch (err) {
+      console.warn("Groq sentiment analysis failed, using fallback:", err);
+    }
   }
 
   const fullText = `${title} ${summary || ""}`.toLowerCase();
@@ -4117,24 +4173,26 @@ app.post("/api/news/analyze-sentiment", async (req, res) => {
   let sentiment = "NEUTRAL";
   let score = 0;
 
-  const bullish = ["surge", "growth", "premium", "oversubscribed", "strong demand", "gain", "higher", "bullish"];
-  const bearish = ["fall", "risk", "loss", "concern", "decline", "regulatory", "bearish"];
-
-  const bullCount = bullish.filter(k => fullText.includes(k)).length;
-  const bearCount = bearish.filter(k => fullText.includes(k)).length;
-
-  if (bullCount > bearCount) {
+  if (
+    [
+      "surge", "growth", "premium", "oversubscribed", "subscription", "strong", "higher", "gain", "rise", "demand", "interest", "positive", "record", "attracts", "jump", "fizz"
+    ].some(k => fullText.includes(k))
+  ) {
     sentiment = "BULLISH";
-    score = Math.min(90, bullCount * 20);
-  } else if (bearCount > bullCount) {
+    score = 40;
+  } else if (
+    [
+      "fall", "risk", "loss", "decline", "concern", "warning", "weak", "drop", "lower", "issue", "negative"
+    ].some(k => fullText.includes(k))
+  ) {
     sentiment = "BEARISH";
-    score = Math.max(-90, bearCount * -20);
+    score = -40;
   }
 
   res.json({
     sentiment,
     score,
-    analysis: "Google News based IPO sentiment analysis with Groq-compatible output format.",
+    analysis: "Local fallback IPO sentiment analysis.",
     keyTriggers: [],
     marketImpact: Math.abs(score) > 40 ? "HIGH" : "MEDIUM"
   });
