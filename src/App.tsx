@@ -411,6 +411,19 @@ const symbols = normalizedHoldings
     await fetchPortfolio();
   };
 
+  const handleDeleteHolding = async (id: number | string) => {
+    const res = await apiFetch(`/api/portfolio/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error || "Failed to delete holding");
+    }
+
+    await fetchPortfolio();
+  };
+
   const handleClearNotifications = async () => {
     try {
       const res = await apiFetch("/api/notifications/clear", { method: "POST" });
@@ -786,6 +799,7 @@ const symbols = normalizedHoldings
                     watchlist={watchlist}
                     onToggleWatchlist={handleToggleWatchlist}
                     onAddHolding={handleAddHolding}
+                    onDeleteHolding={handleDeleteHolding}
                   />
                 )}
                 {activeTab === "arena" && (
