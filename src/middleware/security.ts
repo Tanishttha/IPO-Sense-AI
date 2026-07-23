@@ -92,9 +92,9 @@ export function customRateLimiter(req: Request, res: Response, next: NextFunctio
   const method = req.method;
 
   // Read configurations dynamically from secrets manager
-  const windowMs = parseInt(secretsManager.get("RATE_LIMIT_WINDOW_MS")) || 9000000000000;
-  const maxRequests = parseInt(secretsManager.get("RATE_LIMIT_MAX_REQUESTS")) || 1000000000000;
-  const strictLimit = parseInt(secretsManager.get("RATE_LIMIT_STRICT_MAX_REQUESTS")) || 150000000000;
+  const windowMs = parseInt(secretsManager.get("RATE_LIMIT_WINDOW_MS")) || Number.MAX_SAFE_INTEGER;
+  const maxRequests = parseInt(secretsManager.get("RATE_LIMIT_MAX_REQUESTS")) || Number.MAX_SAFE_INTEGER;
+  const strictLimit = parseInt(secretsManager.get("RATE_LIMIT_STRICT_MAX_REQUESTS")) || Number.MAX_SAFE_INTEGER;
 
   // Cleanup past window records
   let requests = rateLimitStore.get(ip) || [];
@@ -108,7 +108,7 @@ export function customRateLimiter(req: Request, res: Response, next: NextFunctio
 
   const activeLimit = isSensitiveEndpoint ? strictLimit : maxRequests;
 
-  if (requests.length >= activeLimit) {
+  if (activeLimit < Number.MAX_SAFE_INTEGER && requests.length >= activeLimit) {
     // Record Blocked Attempt
     const logItem: RateLimitLog = {
       id: crypto.randomBytes(8).toString("hex"),

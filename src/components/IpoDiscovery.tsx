@@ -203,10 +203,9 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "UPCOMING" | "CLOSED" | "LISTED">("ALL");
   const [sectorFilter, setSectorFilter] = useState("ALL");
   const [subscriptionFilter, setSubscriptionFilter] = useState("ALL");
-  const [gmpPercentFilter, setGmpPercentFilter] = useState("ALL");
   const [issueSizeFilter, setIssueSizeFilter] = useState("ALL");
   const [sortOption, setSortOption] = useState("default");
-  const [directoryTab, setDirectoryTab] = useState<"list" | "gmp-chart" | "subscription-chart" | "timeline">("list");
+  const [directoryTab, setDirectoryTab] = useState<"list" | "subscription-chart" | "timeline">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIpo, setSelectedIpo] = useState<IPO | null>(null);
   const [liveGrowwIpos, setLiveGrowwIpos] = useState<IPO[]>([]);
@@ -234,8 +233,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
           maxPrice: ipo.maxPrice || ipo.categories?.[0]?.maxPrice || 0,
           lotSize: ipo.lotSize || ipo.categories?.[0]?.lotSize || 0,
           issueSize: ipo.issueSize || (ipo.maxPrice && ipo.lotSize ? `₹${(ipo.maxPrice * ipo.lotSize).toLocaleString("en-IN")}` : "N/A"),
-          gmp: ipo.gmp ?? 0,
-          gmpPercent: ipo.gmpPercent ?? 0,
           subscriptionOverall: ipo.subscriptionOverall ?? ipo.overallSubscription ?? 0,
           subscriptionRetail: ipo.subscriptionRetail ?? 0,
           subscriptionQib: ipo.subscriptionQib ?? 0,
@@ -268,92 +265,8 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   }, [ipos]);
   
   // IPO Comparison States
-  const [activeSubView, setActiveSubView] = useState<"directory" | "comparison" | "historical_listings">("directory");
+  const [activeSubView, setActiveSubView] = useState<"directory" | "comparison">("directory");
   const [compareIds, setCompareIds] = useState<string[]>([]);
-
-  // RapidAPI integration states removed
-
-  // Historical Listed IPOs from PostgreSQL db
-  const [historicalIpos, setHistoricalIpos] = useState<any[]>([]);
-  const [loadingHistorical, setLoadingHistorical] = useState(false);
-
-  // New historical IPO fields (for Analysts/Admins)
-  const [newHistSymbol, setNewHistSymbol] = useState("");
-  const [newHistName, setNewHistName] = useState("");
-  const [newHistListingDate, setNewHistListingDate] = useState("");
-  const [newHistIssuePrice, setNewHistIssuePrice] = useState("");
-  const [newHistListingPrice, setNewHistListingPrice] = useState("");
-  const [newHistCurrentPrice, setNewHistCurrentPrice] = useState("");
-  const [newHistGainPercent, setNewHistGainPercent] = useState("");
-  const [newHistSector, setNewHistSector] = useState("");
-  const [submittingHist, setSubmittingHist] = useState(false);
-  const [histMsg, setHistMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const fetchHistoricalIpos = async () => {
-    setLoadingHistorical(true);
-    try {
-      const res = await fetch("/api/historical-ipos");
-      if (res.ok) {
-        const data = await res.json();
-        setHistoricalIpos(data);
-      }
-    } catch (e) {
-      console.error("Failed to load historical listings", e);
-    } finally {
-      setLoadingHistorical(false);
-    }
-  };
-
-  const handleCreateHistoricalIpo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHistSymbol || !newHistName || !newHistListingDate || !newHistIssuePrice || !newHistListingPrice) return;
-    setSubmittingHist(true);
-    setHistMsg(null);
-    try {
-      const res = await fetch("/api/historical-ipos", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-User-Role": user?.role || "INVESTOR"
-        },
-        body: JSON.stringify({
-          symbol: newHistSymbol,
-          name: newHistName,
-          listingDate: newHistListingDate,
-          issuePrice: Number(newHistIssuePrice),
-          listingPrice: Number(newHistListingPrice),
-          currentPrice: Number(newHistCurrentPrice || newHistListingPrice),
-          listingGainPercent: Number(newHistGainPercent || 0),
-          sector: newHistSector
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setHistMsg({ type: "success", text: "Successfully archived historical listed IPO!" });
-        setNewHistSymbol("");
-        setNewHistName("");
-        setNewHistListingDate("");
-        setNewHistIssuePrice("");
-        setNewHistListingPrice("");
-        setNewHistCurrentPrice("");
-        setNewHistGainPercent("");
-        setNewHistSector("");
-        fetchHistoricalIpos();
-      } else {
-        throw new Error(data.error || "Failed to submit listing");
-      }
-    } catch (err: any) {
-      setHistMsg({ type: "error", text: err.message });
-    } finally {
-      setSubmittingHist(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (activeSubView === "historical_listings") {
-      fetchHistoricalIpos();
-    }
-  }, [activeSubView]);
 
   const toggleCompare = (id: string) => {
     setCompareIds(prev => {
@@ -369,6 +282,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   const [activeDetailsTab, setActiveDetailsTab] = useState<"overview" | "financials" | "ai-analysis" | "rhp" | "predict">("overview");
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<any | null>(null);
+  const [compareAnalysis, setCompareAnalysis] = useState<Record<string, any>>({});
   const [loadingRhp, setLoadingRhp] = useState(false);
   const [rhpResult, setRhpResult] = useState<any | null>(null);
   const [loadingPredict, setLoadingPredict] = useState(false);
@@ -392,8 +306,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
     symbol: ipo.symbol || "IPO",
     priceBand: ipo.priceBand || `₹${ipo.minPrice ?? "TBA"} - ₹${ipo.maxPrice ?? "TBA"}`,
     issueSize: ipo.issueSize && ipo.issueSize !== "N/A" ? ipo.issueSize : (ipo.maxPrice && ipo.lotSize ? `₹${(ipo.maxPrice * ipo.lotSize).toLocaleString("en-IN")}` : "N/A"),
-    gmp: ipo.gmp ?? 0,
-    gmpPercent: ipo.gmpPercent ?? 0,
     subscriptionOverall: ipo.subscriptionOverall ?? ipo.overallSubscription ?? 0,
     subscriptionRetail: ipo.subscriptionRetail ?? 0,
     subscriptionQib: ipo.subscriptionQib ?? 0,
@@ -424,25 +336,16 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
     else if (subscriptionFilter === "10x") matchesSub = ipo.subscriptionOverall >= 10;
     else if (subscriptionFilter === "50x") matchesSub = ipo.subscriptionOverall >= 50;
     
-    let matchesGmp = true;
-    if (gmpPercentFilter === "POSITIVE") matchesGmp = ipo.gmpPercent > 0;
-    else if (gmpPercentFilter === "HIGH_GAIN") matchesGmp = ipo.gmpPercent >= 30;
-    else if (gmpPercentFilter === "PREMIUM") matchesGmp = ipo.gmpPercent >= 50;
-    else if (gmpPercentFilter === "NEGATIVE") matchesGmp = ipo.gmpPercent <= 0;
-    
     let matchesSize = true;
     const sizeCr = getIssueSizeInCr(ipo.issueSize);
     if (issueSizeFilter === "SMALL") matchesSize = sizeCr < 500;
     else if (issueSizeFilter === "MEDIUM") matchesSize = sizeCr >= 500 && sizeCr <= 2000;
     else if (issueSizeFilter === "LARGE") matchesSize = sizeCr > 2000;
     
-    return matchesSearch && matchesStatus && matchesSector && matchesSub && matchesGmp && matchesSize;
+    return matchesSearch && matchesStatus && matchesSector && matchesSub && matchesSize;
   });
 
   const sortedIpos = [...filteredIpos].sort((a, b) => {
-    if (sortOption === "gmp") {
-      return b.gmpPercent - a.gmpPercent;
-    }
     if (sortOption === "subscription") {
       return b.subscriptionOverall - a.subscriptionOverall;
     }
@@ -461,104 +364,19 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
     return 0; // default (no additional sorting)
   });
 
-  const handleChartClick = (state: any) => {
-    if (state && state.activePayload && state.activePayload[0]) {
-      const sym = state.activePayload[0].payload.name;
-      const origIpo = sourceIpos.find(i => i.symbol === sym);
-      if (origIpo) handleSelectIpo(origIpo);
-    }
-  };
-
-  const renderGmpChart = () => {
-    const chartData = [...filteredIpos]
-      .filter(ipo => ipo.gmpPercent !== undefined)
-      .sort((a, b) => b.gmpPercent - a.gmpPercent)
-      .map(ipo => ({
-        name: ipo.symbol,
-        fullName: ipo.name,
-        "GMP %": ipo.gmpPercent,
-        "GMP Value (₹)": ipo.gmp,
-        industry: ipo.industry,
-        status: ipo.status,
-      }));
-
-    if (chartData.length === 0) {
-      return (
-        <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card animate-fadeIn">
-          <Activity className="h-10 w-10 text-muted-foreground mx-auto" />
-          <h3 className="mt-4 text-lg font-semibold">No data available for GMP chart</h3>
-          <p className="text-sm text-muted-foreground mt-1">Try relaxing your search or sector filters to see results.</p>
-        </div>
-      );
-    }
-
-    const avgGmp = Math.round(chartData.reduce((acc, curr) => acc + curr["GMP %"], 0) / chartData.length);
-    const highestGmp = Math.max(...chartData.map(d => d["GMP %"]));
-    const highestGmpIpo = chartData.find(d => d["GMP %"] === highestGmp)?.fullName || "N/A";
-
-    return (
-      <div className="space-y-6 animate-fadeIn">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-            <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground">Average GMP Gain</span>
-            <p className="text-2xl font-black text-emerald-500 mt-1">{avgGmp}%</p>
-            <span className="text-[10px] text-muted-foreground">Expected listing day average gain</span>
-          </div>
-          <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-            <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground">Peak Expected Premium</span>
-            <p className="text-2xl font-black text-primary mt-1">{highestGmp}%</p>
-            <span className="text-[10px] text-muted-foreground truncate block">{highestGmpIpo}</span>
-          </div>
-          <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/10">
-            <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground">Filtered Assets</span>
-            <p className="text-2xl font-black text-violet-500 mt-1">{chartData.length}</p>
-            <span className="text-[10px] text-muted-foreground">Under active analysis</span>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="text-sm font-bold text-foreground">Expected Grey Market Gains (%)</h4>
-              <p className="text-xs text-muted-foreground">Visualizes expected listing day premium percent based on latest OTC grey market demand. Click on a bar to select that IPO.</p>
-            </div>
-          </div>
-
-          <div className="h-80 w-full font-mono text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={chartData} 
-                margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-                onClick={handleChartClick}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.15} />
-                <XAxis dataKey="name" stroke="#888888" tickLine={false} />
-                <YAxis stroke="#888888" tickLine={false} unit="%" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "12px" }}
-                  labelStyle={{ fontWeight: "bold" }}
-                  formatter={(value: any, name: any) => {
-                    if (name === "GMP %") return [`${value}%`, name];
-                    return [`₹${value}`, name];
-                  }}
-                />
-                <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" />
-                <Bar 
-                  dataKey="GMP %" 
-                  fill="#6366f1" 
-                  radius={[4, 4, 0, 0]} 
-                  maxBarSize={45}
-                  className="cursor-pointer"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const renderSubscriptionChart = () => {
+    const handleChartClick = (state: any) => {
+  if (!state?.activeLabel) return;
+
+  const ipo = filteredIpos.find(
+    (item) => item.symbol === state.activeLabel
+  );
+
+  if (ipo) {
+    handleSelectIpo(ipo);
+  }
+};
     const chartData = [...filteredIpos]
       .filter(ipo => ipo.status !== "UPCOMING" && ipo.subscriptionOverall !== undefined)
       .sort((a, b) => b.subscriptionOverall - a.subscriptionOverall)
@@ -685,10 +503,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
 
     return (
       <div className="space-y-6 animate-fadeIn">
-        <div className="p-4 rounded-xl bg-violet-500/5 border border-violet-500/15">
-          <h4 className="text-sm font-bold text-foreground">Interactive Capital Allocator & Timeline</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">Chronological checklist of funding commitments, bidding windows, and listing days.</p>
-        </div>
 
         <div className="relative border-l border-border pl-6 ml-3 space-y-6 py-2">
           {sortedEvents.map((event) => {
@@ -763,10 +577,11 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
 
   const handleSelectIpo = (ipo: IPO) => {
     setSelectedIpo(ipo);
-    setActiveDetailsTab("overview");
+    setActiveDetailsTab("ai-analysis");
     setAiAnalysisResult(null);
     setRhpResult(null);
     setPredictResult(null);
+    runAiAnalysis(ipo.id);
   };
 
   // Dynamic Groq Call - AI Deep Analysis
@@ -786,6 +601,31 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
       setLoadingAi(false);
     }
   };
+
+  // Fetch Groq AI analysis for comparison items and cache locally
+  const fetchCompareAnalysis = async (id: string) => {
+    try {
+      const res = await fetch("/api/groq/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ipoId: id })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCompareAnalysis(prev => ({ ...prev, [id]: data }));
+      }
+    } catch (err) {
+      console.error("Compare analysis fetch failed:", err);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeSubView === "comparison" && compareIds.length > 0) {
+      compareIds.forEach(id => {
+        if (!compareAnalysis[id]) fetchCompareAnalysis(id);
+      });
+    }
+  }, [activeSubView, compareIds]);
 
   // Dynamic Groq Call - RHP 5-Minute Summary
   const runRhpSummary = async (id: string) => {
@@ -859,7 +699,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   return (
     <div className="space-y-6">
       {/* Header Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
+<div className="flex flex-col md:flex-row md:items-center justify-start gap-4 border-b border-border pb-5">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">IPO Directory & Intelligence</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -895,17 +735,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
               </span>
             )}
           </button>
-          <button
-            onClick={() => setActiveSubView("historical_listings")}
-            className={`px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeSubView === "historical_listings"
-                ? "bg-card text-foreground shadow-sm font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Historical Listings (Postgres)</span>
-          </button>
         </div>
       </div>
 
@@ -913,7 +742,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
         <>
           {/* CONTROL HUB: Search, Sort & Multi-filters */}
           <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
               {/* Search */}
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -927,7 +756,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
               </div>
 
               {/* Quick Tab Selectors for Directory Views */}
-              <div className="flex p-1 bg-muted/60 border border-border/50 rounded-xl text-xs font-semibold space-x-1 shrink-0 overflow-x-auto self-start md:self-auto">
+              <div className="flex p-1 bg-muted/60 border border-border/50 rounded-xl text-xs font-semibold space-x-1 shrink-0 overflow-x-auto self-start md:self-auto md:ml-auto">
                 <button
                   onClick={() => setDirectoryTab("list")}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1 ${
@@ -939,7 +768,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                   <Layers className="h-3.5 w-3.5" />
                   <span>List View</span>
                 </button>
-                {/* Removed GMP Graph button */}
                 <button
                   onClick={() => setDirectoryTab("subscription-chart")}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1 ${
@@ -966,29 +794,13 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
 
               {/* Advanced Filter Toggle & Reset */}
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                    showFilters || sectorFilter !== "ALL" || subscriptionFilter !== "ALL" || gmpPercentFilter !== "ALL" || issueSizeFilter !== "ALL" || sortOption !== "default"
-                      ? "bg-primary/10 border-primary/30 text-primary"
-                      : "bg-card border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  <span>Filters & Sort</span>
-                  {(sectorFilter !== "ALL" || subscriptionFilter !== "ALL" || gmpPercentFilter !== "ALL" || issueSizeFilter !== "ALL") && (
-                    <span className="bg-primary text-primary-foreground h-2 w-2 rounded-full animate-pulse" />
-                  )}
-                </button>
-
-                {(searchTerm || statusFilter !== "ALL" || sectorFilter !== "ALL" || subscriptionFilter !== "ALL" || gmpPercentFilter !== "ALL" || issueSizeFilter !== "ALL" || sortOption !== "default") && (
+                {(searchTerm || statusFilter !== "ALL" || sectorFilter !== "ALL" || subscriptionFilter !== "ALL" || issueSizeFilter !== "ALL" || sortOption !== "default") && (
                   <button
                     onClick={() => {
                       setSearchTerm("");
                       setStatusFilter("ALL");
                       setSectorFilter("ALL");
                       setSubscriptionFilter("ALL");
-                      setGmpPercentFilter("ALL");
                       setIssueSizeFilter("ALL");
                       setSortOption("default");
                     }}
@@ -1002,7 +814,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
             </div>
 
             {/* EXPANDABLE MULTI-FILTERS & SORTING HUB */}
-            {(showFilters || sectorFilter !== "ALL" || subscriptionFilter !== "ALL" || gmpPercentFilter !== "ALL" || issueSizeFilter !== "ALL" || sortOption !== "default") && (
+            {(showFilters || sectorFilter !== "ALL" || subscriptionFilter !== "ALL" || issueSizeFilter !== "ALL" || sortOption !== "default") && (
               <div className="pt-3 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 animate-fadeIn text-xs">
                 {/* 1. Status Filter */}
                 <div className="space-y-1">
@@ -1035,21 +847,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                   </select>
                 </div>
 
-                {/* 3. GMP Gain Filter */}
-                <div className="space-y-1">
-                  <label className="block text-[10px] uppercase tracking-wider font-mono font-bold text-muted-foreground">GMP Expectations</label>
-                  <select
-                    value={gmpPercentFilter}
-                    onChange={(e: any) => setGmpPercentFilter(e.target.value)}
-                    className="w-full bg-muted/40 border border-border px-3 py-2 rounded-xl focus:outline-none focus:border-primary text-foreground font-medium"
-                  >
-                    <option value="ALL">All GMP %</option>
-                    <option value="POSITIVE">Positive Gains (&gt; 0%)</option>
-                    <option value="HIGH_GAIN">High Premium (&ge; 30%)</option>
-                    <option value="PREMIUM">Premium Surge (&ge; 50%)</option>
-                    <option value="NEGATIVE">Flat or Discount (&le; 0%)</option>
-                  </select>
-                </div>
 
                 {/* 4. Subscription Rate Filter */}
                 <div className="space-y-1">
@@ -1089,7 +886,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                       className="w-full bg-muted/40 border border-border px-3 py-2 rounded-xl focus:outline-none focus:border-primary text-foreground font-medium"
                     >
                       <option value="default">Default</option>
-                      <option value="gmp">GMP % (High &rarr; Low)</option>
                       <option value="subscription">Subscription</option>
                       <option value="aiScore">AI Valuation</option>
                       <option value="issueSize">Issue Size</option>
@@ -1106,7 +902,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
             {/* Left side (Col-span 2) */}
             <div className="xl:col-span-2 space-y-4 animate-fadeIn">
-              {/* Removed GMP Chart conditional render */}
               {directoryTab === "subscription-chart" && renderSubscriptionChart()}
               {directoryTab === "timeline" && renderIpoTimeline()}
               {directoryTab === "list" && (
@@ -1124,122 +919,58 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                       <p className="text-sm text-muted-foreground mt-1">Try expanding your search terms or changing filters.</p>
                     </div>
                   ) : (
-                    sortedIpos.map((ipo) => {
-                      const isGmpPositive = (ipo.gmp ?? 0) >= 0;
-                      return (
-                        <div
-                          key={ipo.id}
-                          onClick={() => handleSelectIpo(ipo)}
-                          className={`p-5 rounded-2xl border bg-card hover:bg-muted/10 cursor-pointer shadow-sm transition-all duration-200 ${
-                            selectedIpo?.id === ipo.id ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-border-hover"
-                          }`}
-                        >
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-sm font-mono">
-                        {ipo.symbol.slice(0, 2)}
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-bold text-base text-foreground">{ipo.name}</h3>
-                          <span className="text-[10px] font-mono font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded">
-                            {ipo.symbol}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{ipo.industry}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                      {onToggleWatchlist && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleWatchlist(ipo.id);
-                          }}
-                          className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all duration-200 cursor-pointer flex items-center space-x-1 ${
-                            watchlist.includes(ipo.id)
-                              ? "bg-amber-500/15 border-amber-500/30 text-amber-500 hover:bg-amber-500/25"
-                              : "bg-muted border-border text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                          }`}
-                          title={watchlist.includes(ipo.id) ? "Remove from Risk Watchlist" : "Add to Risk Watchlist"}
-                        >
-                          <Star className={`h-3 w-3 ${watchlist.includes(ipo.id) ? "fill-amber-500 text-amber-500" : ""}`} />
-                          <span>{watchlist.includes(ipo.id) ? "Watched" : "Watch"}</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleCompare(ipo.id);
-                        }}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all duration-200 cursor-pointer flex items-center space-x-1 ${
-                          compareIds.includes(ipo.id)
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted border-border text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                    sortedIpos.map((ipo) => (
+                      <div
+                        key={ipo.id}
+                        onClick={() => handleSelectIpo(ipo)}
+                        className={`p-5 rounded-2xl border bg-card hover:bg-muted/10 cursor-pointer shadow-sm transition-all duration-200 ${
+                          selectedIpo?.id === ipo.id ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-border-hover"
                         }`}
                       >
-                        {compareIds.includes(ipo.id) ? (
-                          <>
-                            <Check className="h-3 w-3" />
-                            <span>Comparing</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-3 w-3 animate-pulse" />
-                            <span>Compare</span>
-                          </>
-                        )}
-                      </button>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-sm font-mono">
+                              {ipo.symbol.slice(0, 2)}
+                            </div>
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-bold text-base text-foreground">{ipo.name}</h3>
+                                <span className="text-[10px] font-mono font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                                  {ipo.symbol}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">{ipo.industry}</p>
+                            </div>
+                          </div>
+                        </div>
 
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                        ipo.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-500" :
-                        ipo.status === "UPCOMING" ? "bg-blue-500/10 text-blue-500" :
-                        "bg-muted text-muted-foreground"
-                      }`}>
-                        {ipo.status}
-                      </span>
-                      {ipo.recommendation && (
-                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                          ipo.recommendation === "APPLY" ? "bg-violet-500/10 text-violet-500" : "bg-amber-500/10 text-amber-500"
-                        }`}>
-                          AI Recommendation: {ipo.recommendation}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Quick details strip */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-5 pt-4 border-t border-border">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Price Band</span>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.priceBand}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Issue Size</span>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.issueSize}</p>
-                    </div>
-                    {/* Removed Grey Market Premium block */}
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Overall Subscription</span>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">
-                        {ipo.status === "UPCOMING" && !ipo.subscriptionOverall ? "Not Open Yet" : `${ipo.subscriptionOverall ?? 0}x`}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Open Date</span>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.openDate || "TBA"}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Close Date</span>
-                      <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.closeDate || "TBA"}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-5 pt-4 border-t border-border">
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Price Band</span>
+                            <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.priceBand}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Issue Size</span>
+                            <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.issueSize}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Subscription</span>
+                            <p className="text-sm font-semibold text-foreground mt-0.5">
+                              {ipo.status === "UPCOMING" && !ipo.subscriptionOverall ? "Not Open Yet" : `${ipo.subscriptionOverall ?? 0}x`}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Open Date</span>
+                            <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.openDate || "TBA"}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Close Date</span>
+                            <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.closeDate || "TBA"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </>
               )}
             </div>
@@ -1253,7 +984,9 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-lg text-foreground">{selectedIpo.name}</h3>
-                    <span className="text-xs font-mono font-medium text-muted-foreground">{selectedIpo.symbol} • {selectedIpo.registrar}</span>
+                    <span className="text-xs font-mono font-medium text-muted-foreground">
+                      {selectedIpo.symbol}{selectedIpo.registrar && selectedIpo.registrar.toLowerCase() !== "unknown" ? ` • ${selectedIpo.registrar}` : ""}
+                    </span>
                   </div>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                     selectedIpo.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground"
@@ -1265,22 +998,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                 {/* Sub Tab headers */}
                 <div className="flex space-x-1 mt-4 p-1 bg-muted/40 rounded-lg text-xs overflow-x-auto">
                   <button
-                    onClick={() => setActiveDetailsTab("overview")}
-                    className={`flex-1 px-2.5 py-1.5 rounded-md font-medium transition-all shrink-0 ${
-                      activeDetailsTab === "overview" ? "bg-background text-foreground shadow-sm font-semibold" : "text-muted-foreground"
-                    }`}
-                  >
-                    Details
-                  </button>
-                  <button
-                    onClick={() => setActiveDetailsTab("financials")}
-                    className={`flex-1 px-2.5 py-1.5 rounded-md font-medium transition-all shrink-0 ${
-                      activeDetailsTab === "financials" ? "bg-background text-foreground shadow-sm font-semibold" : "text-muted-foreground"
-                    }`}
-                  >
-                    Financials
-                  </button>
-                  <button
                     onClick={() => {
                       setActiveDetailsTab("ai-analysis");
                       if (!aiAnalysisResult) runAiAnalysis(selectedIpo.id);
@@ -1290,7 +1007,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                     }`}
                   >
                     <Sparkles className="h-3 w-3" />
-                    <span>AI Analysis</span>
+                    <span>Analysis</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1344,19 +1061,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                       </div>
                     </div>
 
-                    <div className="border border-border p-3.5 rounded-xl bg-card">
-                      <span className="text-muted-foreground uppercase font-mono font-bold tracking-wider">Promoter Holdings</span>
-                      <div className="flex justify-between mt-2 pt-1">
-                        <div>
-                          <p className="text-muted-foreground">Pre-Issue</p>
-                          <p className="text-sm font-bold text-foreground">{selectedIpo.promoterHoldingBefore}%</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-muted-foreground">Post-Issue</p>
-                          <p className="text-sm font-bold text-foreground">{selectedIpo.promoterHoldingAfter}%</p>
-                        </div>
-                      </div>
-                    </div>
+
 
                     <div className="space-y-2">
                       <h4 className="font-bold text-foreground">Lead Managers</h4>
@@ -1426,14 +1131,14 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                     {loadingAi ? (
                       <div className="py-12 flex flex-col items-center justify-center">
                         <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                        <span className="text-xs text-muted-foreground mt-2 font-mono">Running LLM Quantitative Analysis...</span>
+                        <span className="text-xs text-muted-foreground mt-2 font-mono">Running...</span>
                       </div>
                     ) : aiAnalysisResult ? (
                       <div className="space-y-4">
                         {/* Score Indicator */}
                         <div className="flex items-center justify-between p-4 bg-violet-500/10 border border-violet-500/20 rounded-xl">
                           <div>
-                            <span className="text-muted-foreground">IPOSense AI Score</span>
+                            <span className="text-muted-foreground">IPO Sense AI Score</span>
                             <h4 className="text-xl font-bold text-primary">{aiAnalysisResult.aiScore}/100</h4>
                           </div>
                           <div className="text-right">
@@ -1633,7 +1338,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
             </div>
             <div>
               <p className="text-xs font-bold text-foreground">Selected for comparison</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Compare and contrast AI scores, financials & Grey Market premiums.</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Compare and contrast AI scores, financials & subscription demand.</p>
             </div>
           </div>
           <div className="flex items-center space-x-2 shrink-0">
@@ -1763,13 +1468,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
               <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
                 {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
                   <div key={ipo.id} className="px-4 text-center">
-                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                      ipo.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-500" :
-                      ipo.status === "UPCOMING" ? "bg-blue-500/10 text-blue-500" :
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {ipo.status}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -1792,17 +1490,21 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                 </div>
               </div>
               <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
-                  <div key={ipo.id} className="px-4 text-center">
-                    <div className="inline-flex items-center justify-center p-3 bg-violet-500/10 border border-violet-500/20 rounded-2xl">
-                      <span className="text-lg font-black text-primary font-mono">{ipo.aiScore}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">/100</span>
+                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => {
+                  const analysis = compareAnalysis[ipo.id] || {};
+                  const score = analysis.aiScore ?? ipo.aiScore ?? 0;
+                  return (
+                    <div key={ipo.id} className="px-4 text-center">
+                      <div className="inline-flex items-center justify-center p-3 bg-violet-500/10 border border-violet-500/20 rounded-2xl">
+                        <span className="text-lg font-black text-primary font-mono">{score}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">/100</span>
+                      </div>
+                      <div className="w-20 mx-auto mt-2 bg-muted rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-primary h-full rounded-full" style={{ width: `${score}%` }} />
+                      </div>
                     </div>
-                    <div className="w-20 mx-auto mt-2 bg-muted rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-primary h-full rounded-full" style={{ width: `${ipo.aiScore}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -1812,61 +1514,74 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                 <span className="text-xs font-bold text-foreground">AI Recommendation</span>
               </div>
               <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
-                  <div key={ipo.id} className="px-4 text-center">
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                      ipo.recommendation === "APPLY" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
-                      ipo.recommendation === "AVOID" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
-                      "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                    }`}>
-                      {ipo.recommendation}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* row: Confidence Score */}
-            <div className="grid grid-cols-12 p-5 items-center">
-              <div className="col-span-3">
-                <span className="text-xs font-bold text-foreground">AI Confidence Level</span>
-              </div>
-              <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
-                  <div key={ipo.id} className="px-4 text-center">
-                    <span className="font-mono text-xs font-bold text-foreground">{ipo.aiConfidence}%</span>
-                    <div className="w-16 mx-auto mt-1.5 bg-muted rounded-full h-1 overflow-hidden">
-                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${ipo.aiConfidence}%` }} />
+                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => {
+                  const analysis = compareAnalysis[ipo.id] || {};
+                  const rec = analysis.recommendation || ipo.recommendation || "MODERATE";
+                  return (
+                    <div key={ipo.id} className="px-4 text-center">
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                        rec === "APPLY" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                        rec === "AVOID" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
+                        "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                      }`}>
+                        {rec}
+                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            {/* row: Risk Meter */}
-            <div className="grid grid-cols-12 p-5 items-center">
+            {/* row: AI Reasoning Summary */}
+            <div className="grid grid-cols-12 p-5 items-start">
               <div className="col-span-3">
-                <span className="text-xs font-bold text-foreground">Risk Score</span>
+                <span className="text-xs font-bold text-foreground">AI Reasoning Summary</span>
               </div>
               <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
                 {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
-                  <div key={ipo.id} className="px-4 text-center font-mono text-xs font-bold">
-                    <span className={ipo.riskScore > 65 ? "text-rose-500" : ipo.riskScore > 40 ? "text-amber-500" : "text-emerald-500"}>
-                      {ipo.riskScore}/100
-                    </span>
+                  <div key={ipo.id} className="px-4 text-left text-xs text-muted-foreground">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {compareAnalysis[ipo.id]?.reasoningSummary || ipo.aiSummary || "—"}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* SECTION: FINANCIALS METRICS */}
-            <div className="grid grid-cols-12 bg-violet-500/5 p-4 items-center font-mono font-bold text-violet-500 text-xs tracking-wider uppercase">
-              <div className="col-span-12 flex items-center">
-                <Briefcase className="h-4 w-4 mr-2" />
-                <span>Financial Metrics & Capital Structure</span>
+            {/* row: Key Drivers (Pros / Cons) */}
+            <div className="grid grid-cols-12 p-5 items-stretch">
+              <div className="col-span-3">
+                <span className="text-xs font-bold text-foreground">Key Drivers</span>
+              </div>
+              <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
+                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => {
+                  const analysis = compareAnalysis[ipo.id] || {};
+                  const pros = analysis.detailedPros || ipo.strengths || [];
+                  const cons = analysis.detailedCons || ipo.risks || [];
+                  return (
+                    <div key={ipo.id} className="px-4 border-r border-border last:border-0 text-xs text-muted-foreground">
+                      {pros.length > 0 && (
+                        <div>
+                          <span className="text-[10px] uppercase font-mono font-bold text-emerald-500">Strengths:</span>
+                          <ul className="list-disc pl-4 text-[10px] mt-1.5 text-foreground">
+                            {pros.slice(0,3).map((p: string, i: number) => <li key={i}>{p}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      {cons.length > 0 && (
+                        <div className={pros.length > 0 ? "mt-3" : undefined}>
+                          <span className="text-[10px] uppercase font-mono font-bold text-rose-500">Risks:</span>
+                          <ul className="list-disc pl-4 text-[10px] mt-1.5 text-foreground">
+                            {cons.slice(0,3).map((c: string, i: number) => <li key={i}>{c}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-
             {/* row: Price Band */}
             <div className="grid grid-cols-12 p-5 items-center">
               <div className="col-span-3">
@@ -1910,85 +1625,10 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
               </div>
             </div>
 
-            {/* row: Promoter Holding Before/After */}
-            <div className="grid grid-cols-12 p-5 items-center">
-              <div className="col-span-3">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-foreground">Promoter Holding</span>
-                  <span className="text-[10px] text-muted-foreground">Pre-Issue → Post-Issue</span>
-                </div>
-              </div>
-              <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
-                  <div key={ipo.id} className="px-4 text-center text-xs text-foreground">
-                    <span className="font-bold">{ipo.promoterHoldingBefore}%</span>
-                    <span className="mx-1 text-muted-foreground">→</span>
-                    <span className="font-bold text-violet-500">{ipo.promoterHoldingAfter}%</span>
-                    <p className="text-[10px] text-rose-500 mt-0.5">
-                      ({(ipo.promoterHoldingBefore - ipo.promoterHoldingAfter).toFixed(1)}% Dilution)
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* row: Revenue / PAT Latest */}
-            <div className="grid grid-cols-12 p-5 items-center">
-              <div className="col-span-3">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-foreground">Latest Annual Profits (PAT)</span>
-                  <span className="text-[10px] text-muted-foreground">Latest fiscal year profit</span>
-                </div>
-              </div>
-              <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => {
-                  const latestFin = ipo.financials[ipo.financials.length - 1];
-                  return (
-                    <div key={ipo.id} className="px-4 text-center text-xs">
-                      <span className={`font-mono font-bold ${latestFin && latestFin.profit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                        {latestFin ? `₹${latestFin.profit} Cr` : "N/A"}
-                      </span>
-                      {latestFin && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">on Revenue of ₹{latestFin.revenue} Cr</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* SECTION: GREY MARKET PREMIUMS */}
-            <div className="grid grid-cols-12 bg-emerald-500/5 p-4 items-center font-mono font-bold text-emerald-500 text-xs tracking-wider uppercase">
-              <div className="col-span-12 flex items-center">
-                <Activity className="h-4 w-4 mr-2" />
-                <span>Grey Market Premium & Subscription Trends</span>
-              </div>
-            </div>
-
-            {/* row: GMP Value */}
-            <div className="grid grid-cols-12 p-5 items-center">
-              <div className="col-span-3">
-                <span className="text-xs font-bold text-foreground">Current GMP</span>
-              </div>
-              <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => {
-                  const isGmpPositive = ipo.gmp >= 0;
-                  return (
-                    <div key={ipo.id} className="px-4 text-center">
-                      <span className={`text-sm font-black font-mono ${isGmpPositive ? "text-emerald-500" : "text-rose-500"}`}>
-                        ₹{ipo.gmp}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">({ipo.gmpPercent > 0 ? "+" : ""}{ipo.gmpPercent}% listing gain)</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* row: Subscription */}
             <div className="grid grid-cols-12 p-5 items-center">
               <div className="col-span-3">
-                <span className="text-xs font-bold text-foreground">Overall Subscription</span>
+                <span className="text-xs font-bold text-foreground">Subscription</span>
               </div>
               <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
                 {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
@@ -1999,48 +1639,9 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                       <>
                         <span className="font-bold text-foreground">{ipo.subscriptionOverall}x</span>
                         <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                          <div>Retail: {ipo.subscriptionRetail}x</div>
-                          <div>HNI: {ipo.subscriptionHni}x</div>
-                          <div>QIB: {ipo.subscriptionQib}x</div>
                         </div>
                       </>
                     )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* row: Strengths & Risks bullet comparison */}
-            <div className="grid grid-cols-12 bg-muted/20 p-4 items-center font-mono font-bold text-muted-foreground text-xs tracking-wider uppercase">
-              <div className="col-span-12 flex items-center">
-                <ShieldAlert className="h-4 w-4 mr-2" />
-                <span>Core Strengths vs Identified Risks</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-12 p-5 items-stretch">
-              <div className="col-span-3">
-                <span className="text-xs font-bold text-foreground">Key Drivers</span>
-              </div>
-              <div className="col-span-9 grid gap-4" style={{ gridTemplateColumns: `repeat(${compareIds.length}, minmax(0, 1fr))` }}>
-                {ipos.filter(ipo => compareIds.includes(ipo.id)).map((ipo) => (
-                  <div key={ipo.id} className="px-4 border-r border-border last:border-0 flex flex-col justify-between space-y-4">
-                    <div>
-                      <span className="text-[10px] uppercase font-mono font-bold text-emerald-500">Strengths:</span>
-                      <ul className="list-disc pl-4 text-[10px] text-muted-foreground space-y-1 mt-1.5">
-                        {ipo.strengths.slice(0, 3).map((s, idx) => (
-                          <li key={idx} className="leading-relaxed">{s}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-mono font-bold text-rose-500">Risks:</span>
-                      <ul className="list-disc pl-4 text-[10px] text-muted-foreground space-y-1 mt-1.5">
-                        {ipo.risks.slice(0, 3).map((r, idx) => (
-                          <li key={idx} className="leading-relaxed">{r}</li>
-                        ))}
-                      </ul>
-                    </div>
                   </div>
                 ))}
               </div>
@@ -2430,269 +2031,6 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
           )}
         </div>
       )}
-    </div>
-  )}
-
-  {activeSubView === "historical_listings" && (
-    <div className="space-y-6 animate-fadeIn animate-duration-300">
-      {/* Postgres Database Status Header */}
-      <div className="p-5 bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent border border-violet-500/20 rounded-2xl shadow-sm relative overflow-hidden">
-        <div className="absolute right-6 top-6 opacity-10 pointer-events-none">
-          <Calendar className="h-28 w-28 text-primary" />
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <span className="h-2 w-2 bg-indigo-500 rounded-full animate-ping"></span>
-              <span className="text-[10px] uppercase font-mono font-bold text-indigo-500 tracking-wider">Durable Cloud SQL PostgreSQL Active</span>
-            </div>
-            <h3 className="text-lg font-extrabold text-foreground flex items-center gap-1.5">
-              <span>Historical IPO Allotment & Listing Record Database</span>
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-2xl">
-              Query persistent records of past listings, original issue pricing, listing day openings, and current valuations fetched straight from your PostgreSQL database.
-            </p>
-          </div>
-          <button
-            onClick={fetchHistoricalIpos}
-            disabled={loadingHistorical}
-            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs bg-card border border-border hover:bg-muted text-foreground rounded-lg transition-all font-semibold"
-          >
-            <RefreshCw className={`h-3 w-3 ${loadingHistorical ? "animate-spin" : ""}`} />
-            <span>Reload Db</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        {/* Left column: Historical Listing Table */}
-        <div className="xl:col-span-2 space-y-4">
-          <div className="border border-border rounded-2xl bg-card overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-border bg-muted/20 flex justify-between items-center">
-              <h4 className="text-xs font-extrabold uppercase font-mono tracking-wider text-foreground">
-                Persistent Listing Catalog ({historicalIpos.length})
-              </h4>
-            </div>
-
-            {loadingHistorical ? (
-              <div className="p-12 text-center">
-                <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto" />
-                <p className="text-xs text-muted-foreground mt-2 font-mono">Loading PostgreSQL registry...</p>
-              </div>
-            ) : historicalIpos.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground space-y-2">
-                <p>No historical records exist in the database.</p>
-                {(user?.role === "ADMINISTRATOR" || user?.role === "RESEARCH_ANALYST") && (
-                  <p className="text-[10px]">Use the archive console on the right to append your first entry.</p>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/10 text-muted-foreground font-mono">
-                      <th className="p-3">Asset</th>
-                      <th className="p-3">Listing Date</th>
-                      <th className="p-3 text-right">Issue Price</th>
-                      <th className="p-3 text-right">List Price</th>
-                      <th className="p-3 text-right">Current</th>
-                      <th className="p-3 text-right">Listing Gain</th>
-                      <th className="p-3">Sector</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historicalIpos.map((hipo) => {
-                      const gain = Number(hipo.listingGainPercent || 0);
-                      return (
-                        <tr key={hipo.id} className="border-b border-border hover:bg-muted/10 transition-all">
-                          <td className="p-3">
-                            <div className="font-bold text-foreground">{hipo.name}</div>
-                            <div className="text-[10px] text-muted-foreground font-mono">{hipo.symbol}</div>
-                          </td>
-                          <td className="p-3 text-muted-foreground font-mono">
-                            {hipo.listingDate ? new Date(hipo.listingDate).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric"
-                            }) : "-"}
-                          </td>
-                          <td className="p-3 text-right font-mono font-medium">₹{Number(hipo.issuePrice || 0).toLocaleString()}</td>
-                          <td className="p-3 text-right font-mono font-medium text-foreground">₹{Number(hipo.listingPrice || 0).toLocaleString()}</td>
-                          <td className="p-3 text-right font-mono font-medium text-foreground">₹{Number(hipo.currentPrice || hipo.listingPrice || 0).toLocaleString()}</td>
-                          <td className={`p-3 text-right font-mono font-bold ${gain >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                            {gain >= 0 ? "+" : ""}{gain.toFixed(2)}%
-                          </td>
-                          <td className="p-3">
-                            <span className="bg-muted px-2 py-0.5 rounded text-[10px] text-muted-foreground uppercase font-mono">
-                              {hipo.sector || "General"}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right column: Form console for authorized users or informational banner */}
-        <div className="xl:col-span-1 space-y-4">
-          {user?.role === "ADMINISTRATOR" || user?.role === "RESEARCH_ANALYST" ? (
-            <div className="p-5 border border-border rounded-2xl bg-card shadow-sm space-y-4">
-              <div className="flex items-center space-x-2">
-                <Plus className="h-4 w-4 text-primary" />
-                <h4 className="text-xs font-extrabold uppercase tracking-wider font-mono text-foreground">
-                  Archive Listing Console
-                </h4>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                As an authorized <strong className="text-foreground">{user?.role === "ADMINISTRATOR" ? "Administrator" : "Research Analyst"}</strong>, you can persist new IPO events directly in the Cloud SQL catalog.
-              </p>
-
-              {histMsg && (
-                <div className={`p-3 rounded-xl text-xs font-mono border ${
-                  histMsg.type === "success" 
-                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
-                    : "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                }`}>
-                  {histMsg.text}
-                </div>
-              )}
-
-              <form onSubmit={handleCreateHistoricalIpo} className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Company Symbol *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. INFY"
-                    value={newHistSymbol}
-                    onChange={(e) => setNewHistSymbol(e.target.value.toUpperCase())}
-                    className="w-full bg-muted/40 border border-border rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-primary text-foreground"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Company Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Infosys Limited"
-                    value={newHistName}
-                    onChange={(e) => setNewHistName(e.target.value)}
-                    className="w-full bg-muted/40 border border-border rounded-lg p-2 text-sm focus:outline-none focus:border-primary text-foreground"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Listing Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={newHistListingDate}
-                      onChange={(e) => setNewHistListingDate(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-lg p-2 text-sm focus:outline-none focus:border-primary text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Sector</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Technology"
-                      value={newHistSector}
-                      onChange={(e) => setNewHistSector(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-lg p-2 text-sm focus:outline-none focus:border-primary text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Issue Price *</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      placeholder="e.g. 520"
-                      value={newHistIssuePrice}
-                      onChange={(e) => setNewHistIssuePrice(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-primary text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Listing Price *</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      placeholder="e.g. 710"
-                      value={newHistListingPrice}
-                      onChange={(e) => setNewHistListingPrice(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-primary text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Current Price</label>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="e.g. 1520"
-                      value={newHistCurrentPrice}
-                      onChange={(e) => setNewHistCurrentPrice(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-primary text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-muted-foreground font-mono font-bold uppercase mb-1">Listing Gain (%)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="e.g. 36.5"
-                      value={newHistGainPercent}
-                      onChange={(e) => setNewHistGainPercent(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-lg p-2 font-mono text-sm focus:outline-none focus:border-primary text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submittingHist}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center space-x-1"
-                >
-                  {submittingHist ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                      <span>Writing to Database...</span>
-                    </>
-                  ) : (
-                    <span>Archive Entry to Postgres</span>
-                  )}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="p-5 border border-border rounded-2xl bg-card shadow-sm space-y-4">
-              <h4 className="text-xs font-extrabold flex items-center gap-1.5 text-foreground uppercase tracking-wider font-mono">
-                <Info className="h-4 w-4 text-primary" />
-                <span>Analyst Access Profile</span>
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                You are currently viewed under an <strong className="text-foreground">Investor</strong> role. Only <strong className="text-foreground">Research Analysts</strong> and <strong className="text-foreground">Administrators</strong> may add or edit persistent listing day histories.
-              </p>
-              <p className="text-[11px] text-muted-foreground bg-muted/40 p-3 rounded-xl leading-relaxed">
-                Tip: You can easily elevate or switch your profile role instantly inside the <strong>Admin Center</strong> or by toggling your profile settings under Sign In options.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )}
 

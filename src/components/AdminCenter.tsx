@@ -1007,7 +1007,7 @@ export default function AdminCenter({
                       <div className="bg-muted/40 p-3 rounded-xl border border-border/80">
                         <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Standard Limit</p>
                         <p className="text-sm font-black text-white mt-0.5">
-                          {securityConfig?.rateLimitMaxRequests || 100} Req
+                          {securityConfig && securityConfig.rateLimitMaxRequests >= 1000000000000 ? "Unlimited" : securityConfig?.rateLimitMaxRequests || "Unlimited"} Req
                         </p>
                         <span className="text-[9px] text-gray-400">Standard API routes</span>
                       </div>
@@ -1015,7 +1015,7 @@ export default function AdminCenter({
                       <div className="bg-muted/40 p-3 rounded-xl border border-border/80">
                         <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Strict Limit</p>
                         <p className="text-sm font-black text-white mt-0.5">
-                          {securityConfig?.rateLimitStrictMaxRequests || 15} Req
+                          {securityConfig && securityConfig.rateLimitStrictMaxRequests >= 1000000000000 ? "Unlimited" : securityConfig?.rateLimitStrictMaxRequests || "Unlimited"} Req
                         </p>
                         <span className="text-[9px] text-gray-400">Auth, admin, AI routes</span>
                       </div>

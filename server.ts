@@ -1246,8 +1246,13 @@ async function fetchRapidIpoCalendar(): Promise<any[]> {
   ];
 }
 
-// Helper to find IPO by Id
-const getIpoById = (id: string) => globalIposList.find(i => i.id === id || i.symbol === id);
+// Helper to find IPO by Id or search identifier
+const getIpoById = (id: string) => globalIposList.find(i =>
+  i.id === id ||
+  i.symbol === id ||
+  i.searchId === id ||
+  i.companyCode === id
+);
 
 // NSE Audit background function simulating live National Stock Exchange query check
 function performNseAllotmentAudit() {
@@ -2288,9 +2293,9 @@ app.get("/api/ipo/groww/open", async (req, res) => {
         gmp: item.gmp || 0,
         gmpPercent: item.gmpPercent || 0,
         subscriptionOverall: item.overallSubscription || 0,
-        subscriptionRetail: 0,
-        subscriptionQib: 0,
-        subscriptionHni: 0,
+        subscriptionRetail: null,
+subscriptionQib: null,
+subscriptionHni: null,
         status: item.isPreApply ? "UPCOMING" : "ACTIVE"
       };
     });
@@ -3209,40 +3214,56 @@ app.post("/api/groq/analyze", async (req, res) => {
 
   const client = getGroqClient();
   const prompt = `Analyze this IPO and return the result strictly as a valid JSON object.
+
 Company: ${ipo.name} (${ipo.symbol})
 Price Band: ${ipo.priceBand}
 Issue Size: ${ipo.issueSize}
-GMP (Grey Market Premium): ₹${ipo.gmp} (${ipo.gmpPercent}%)
-Subscription Status: Overall: ${ipo.subscriptionOverall}x, Retail: ${ipo.subscriptionRetail}x, QIB: ${ipo.subscriptionQib}x, HNI: ${ipo.subscriptionHni}x
-Promoter Holding before/after: ${ipo.promoterHoldingBefore}% / ${ipo.promoterHoldingAfter}%
-Industry: ${ipo.industry}
-Key Strengths: ${JSON.stringify(ipo.strengths)}
-Key Risks: ${JSON.stringify(ipo.risks)}
+Overall Subscription: ${ipo.subscriptionOverall}x
 
-Perform a professional quantitative and qualitative AI valuation. Return a JSON structure exactly corresponding to this schema:
+IMPORTANT:
+
+- Evaluate the IPO ONLY using the information explicitly provided.
+- Missing information must be treated as "not available", NOT as a weakness, risk, or negative signal.
+- Never penalize the IPO because some information is unavailable.
+- Never write phrases like:
+  - "No additional information available..."
+  - "Insufficient information..."
+  - "Cannot assess..."
+  - "Unable to evaluate..."
+  - "Limited information..."
+  - "Due to missing data..."
+- If a metric is not provided, simply ignore it and continue the analysis using the remaining available data.
+- Generate Pros and Cons ONLY from the provided information.
+- If no evidence-based con exists in the provided data, return an empty array for "detailedCons".
+- Base the AI Score, Risk Level, Confidence, and Recommendation ONLY on the available information. Do not lower the score or confidence because some information is missing.
+
+Return a JSON object matching EXACTLY this schema:
+
 {
   "aiScore": <number between 0 and 100>,
   "confidencePercent": <number between 0 and 100>,
   "riskMeter": "LOW" | "MODERATE" | "HIGH",
   "listingGainProbability": <number between 0 and 100>,
   "recommendation": "APPLY" | "AVOID" | "MODERATE",
-  "reasoningSummary": "<compelling 3-4 sentence explanation on why to apply or avoid, quoting specific financial numbers & GMP>",
-  "detailedPros": ["string list"],
-  "detailedCons": ["string list"]
+  "reasoningSummary": "<Maximum 3 sentences based ONLY on the provided information. Never mention unavailable metrics or assumptions.>",
+  "detailedPros": ["Only include advantages directly supported by the provided data."],
+  "detailedCons": ["Only include disadvantages directly supported by the provided data."]
 }
-Return ONLY valid JSON.`;
+
+Return ONLY valid JSON.
+Do not include markdown, explanations, notes, or additional text.`;
 
   if (!client) {
     // Elegant fallback rule-based analysis if Groq key is missing
-    const isGood = ipo.gmpPercent > 20 && ipo.aiScore > 70;
-    const recommendation = isGood ? "APPLY" : (ipo.gmpPercent < 0 ? "AVOID" : "MODERATE");
+    const isGood = ipo.aiScore > 70 || ipo.subscriptionOverall >= 20;
+    const recommendation = isGood ? "APPLY" : "MODERATE";
     const mockAnalysis = {
       aiScore: ipo.aiScore,
       confidencePercent: ipo.aiConfidence,
       riskMeter: ipo.riskScore > 60 ? "HIGH" : (ipo.riskScore > 35 ? "MODERATE" : "LOW"),
-      listingGainProbability: Math.min(95, Math.max(5, Math.round(ipo.gmpPercent * 1.5 + 40))),
+      listingGainProbability: Math.min(95, Math.max(5, Math.round((ipo.aiScore * 0.6) + (ipo.subscriptionOverall * 1.2)))),
       recommendation,
-      reasoningSummary: `AI valuation suggests ${recommendation} for ${ipo.name}. Supported by a Grey Market Premium of ₹${ipo.gmp} (${ipo.gmpPercent}%), the market shows solid conviction. The enterprise operates in ${ipo.industry} showing robust CAGR, offset by sector-specific hurdles.`,
+      reasoningSummary: "This assessment focuses on subscription strength, issue size, and issuer fundamentals rather than grey market premium.",
       detailedPros: ipo.strengths,
       detailedCons: ipo.risks
     };
@@ -3298,7 +3319,7 @@ app.post("/api/groq/chat", async (req, res) => {
 
   // Construct context with our known IPO database so chatbot responds smartly!
   const ipoContext = IPOS_DATA.map(i => 
-    `IPO: ${i.name} (${i.symbol}) | Industry: ${i.industry} | Price Band: ${i.priceBand} | GMP: ₹${i.gmp} (${i.gmpPercent}%) | AI Score: ${i.aiScore} | Recommendation: ${i.recommendation}`
+    `IPO: ${i.name} (${i.symbol}) | Industry: ${i.industry} | Price Band: ${i.priceBand} | Subscription: ${i.subscriptionOverall}x | AI Score: ${i.aiScore} | Recommendation: ${i.recommendation}`
   ).join("\n");
 
   const prompt = `You are "IPOSense AI Assist", a world-class financial analyst and investment advisor chatbot.
@@ -3306,19 +3327,19 @@ Use this context about active/upcoming IPOs:
 ${ipoContext}
 
 User asked: "${lastUserMsg}"
-Respond professionally. Keep responses concise, structured, bulleted, and filled with realistic data. Highlight key metrics (GMP, issue size) where appropriate.`;
+Respond professionally. Keep responses concise, structured, bulleted, and filled with realistic data. Highlight key metrics (subscription, issue size) where appropriate.`;
 
   if (!client) {
     // Generate intelligent rule-based response if Groq is not set up
     let answer = `I'm here to assist you with IPO Intelligence! Here's a quick look at the market sentiment: \n\n`;
     if (lastUserMsg.toLowerCase().includes("apply") || lastUserMsg.toLowerCase().includes("should i")) {
-      answer += `Based on current Grey Market Premium (GMP) data, we strongly recommend looking at **Acme CloudTech AI (ACMEAI)** which carries an AI Score of 88/100 and a high Listing Gain Probability of 85%. On the other hand, **ZetaPay Fintech** should be avoided due to widening retail NPAs and premium pricing.`;
-    } else if (lastUserMsg.toLowerCase().includes("gmp") || lastUserMsg.toLowerCase().includes("premium")) {
-      answer += `The highest Grey Market Premium is currently commanded by **Acme CloudTech AI (ACMEAI)** at **₹185 (38.9% gains)**. NovaCharge Mobility is also solid at **₹42 (21.5% gains)**, whereas Solaris Renewable shows an impressive listing prediction of 32% premium.`;
+      answer += `Based on the latest subscription momentum and issuer fundamentals, we strongly recommend considering **Acme CloudTech AI (ACMEAI)** which carries an AI Score of 88/100 and a high listing gain probability. In contrast, **ZetaPay Fintech** appears less attractive due to weaker demand and valuation risk.`;
+    } else if (lastUserMsg.toLowerCase().includes("premium")) {
+      answer += `We are currently emphasizing subscription demand, issue size, and valuation discipline. Top active IPOs in our universe are showing strong subscription strength, especially Acme CloudTech AI and NovaCharge Mobility.`;
     } else {
       answer += `You can ask me questions like:
 - "Should I apply for Acme CloudTech AI?"
-- "Which active IPO has the highest Grey Market Premium (GMP)?"
+- "Which active IPO has the strongest subscription demand?"
 - "Is ZetaPay Fintech a safe investment?"
 - "Help me analyze Solaris Renewable Energy's financial statements."`;
     }
@@ -3335,7 +3356,7 @@ Respond professionally. Keep responses concise, structured, bulleted, and filled
   } catch (err) {
     handleGroqError(err);
     console.error("Groq chat error, using fallback:", err);
-    res.json({ text: "Sorry, I ran into a connection glitch. Here is what I can tell you: Acme CloudTech AI remains the highest rated IPO currently, offering a stellar GMP of ₹185." });
+    res.json({ text: "Sorry, I ran into a connection glitch. Here is what I can tell you: Acme CloudTech AI remains highly rated based on its subscription strength and valuation profile." });
   }
 });
 
@@ -3388,7 +3409,8 @@ Return ONLY valid JSON.`;
     });
     const content = response.choices[0]?.message?.content;
     if (content) {
-      res.json(JSON.parse(content.trim()));
+      const parsed = JSON.parse(content.trim());
+      res.json(parsed);
     } else {
       throw new Error("No text response");
     }
@@ -3415,8 +3437,33 @@ app.post("/api/groq/listing-predict", async (req, res) => {
   }
 
   const client = getGroqClient();
-  const prompt = `Based on current GMP (₹${ipo.gmp}), issue price (₹${ipo.maxPrice}), current subscription rate (${ipo.subscriptionOverall}x), and sector-level tailwinds, predict the listing gains & future stock trajectory for ${ipo.name} (${ipo.symbol}).
-Return JSON schema:
+  const priceBandMatch = String(ipo.priceBand || "").match(/\d+/g);
+  const issuePrice = ipo.maxPrice || (priceBandMatch ? Number(priceBandMatch[priceBandMatch.length - 1]) : 0);
+  const prompt = `Analyze this IPO and return the result strictly as a valid JSON object.
+
+Company: ${ipo.name} (${ipo.symbol})
+Price Band: ${ipo.priceBand}
+Issue Size: ${ipo.issueSize}
+Overall Subscription: ${ipo.subscriptionOverall}x
+
+IMPORTANT RULES:
+
+- Use ONLY the information explicitly provided above.
+- Never assume, infer, estimate, fabricate, or guess any missing information.
+- Do NOT mention or analyze Retail Subscription, QIB Subscription, HNI/NII Subscription, GMP (Grey Market Premium), Promoter Holding, Financial Statements, Revenue, Profit, Debt, P/E, ROE, EPS, Anchor Investors, Institutional Demand, Strengths, Risks, Valuation Multiples, or any other metric unless it is explicitly provided above.
+- If the available information is insufficient for a certain conclusion, simply avoid discussing it.
+- The reasoning must be based ONLY on the provided fields.
+- Do not compare with peers unless peer data is explicitly provided.
+- Do not invent numbers, percentages, or qualitative statements about unavailable data.
+- Predict a realistic listing price using ONLY the provided information.
+- The predictedListingPrice must represent the expected first-day exchange listing price, NOT the issue price or upper price band.
+- Do not simply copy the upper price band as the predictedListingPrice.
+- Use the Price Band, Issue Size, and Overall Subscription together to estimate a realistic listing price.
+- Higher subscription may justify a listing premium, while weaker demand may justify a listing price near or below the issue price.
+- The predictedListingPrice should be your best reasonable estimate based only on the provided information.
+
+
+Return a JSON object matching EXACTLY this schema:
 {
   "predictedListingPrice": <number>,
   "listingGainsPercent": <number>,
@@ -3426,11 +3473,13 @@ Return JSON schema:
   "bullCase": "...",
   "bearCase": "..."
 }
-Return ONLY valid JSON.`;
+
+Return ONLY valid JSON.
+Do not include markdown, explanations, notes, or additional text.`;
 
   if (!client) {
-    const predictedListingPrice = ipo.maxPrice + ipo.gmp;
-    const listingGainsPercent = Math.round((ipo.gmp / ipo.maxPrice) * 1000) / 10;
+    const predictedListingPrice = Math.round(issuePrice * 1.07);
+    const listingGainsPercent = issuePrice > 0 ? Math.round(((predictedListingPrice - issuePrice) / issuePrice) * 1000) / 10 : 0;
     return res.json({
       predictedListingPrice,
       listingGainsPercent,
