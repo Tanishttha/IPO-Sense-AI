@@ -5,6 +5,8 @@ import fs from "fs";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import Groq from "groq-sdk";
+import axios from "axios";
+import * as cheerio from "cheerio";
 import jwt from "jsonwebtoken";
 import { PDFParse } from "pdf-parse";
 
@@ -3594,67 +3596,221 @@ app.post("/api/groq/music", (req, res) => {
   });
 });
 
-// 10. Listing Day live simulator (Streaming metrics updated with slight random walk)
-const liveListingCache: Record<string, any> = {};
-app.get("/api/listing-day/:symbol", (req, res) => {
-  const { symbol } = req.params;
-  const ipo = IPOS_DATA.find(i => i.symbol === symbol.toUpperCase());
-  if (!ipo) {
-    return res.status(404).json({ error: "IPO not found" });
+// 10. Listing Day: fetch Groww closed IPO SSR HTML and provide companies + analysis endpoints
+
+async function getClosedIPOList(): Promise<any[]> {
+  const cacheKey = "groww_closed_ipos";
+  const cached = redisCache.get(cacheKey);
+  if (cached) return cached;
+
+  const url = "https://groww.in/ipo/closed";
+  try {
+    const { data: html } = await axios.get(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; iposense/1.0)" },
+      timeout: 10_000
+    });
+
+    const $ = cheerio.load(html);
+    const script = $("#__NEXT_DATA__").html();
+    if (!script) return [];
+    const nextData = JSON.parse(script);
+    const list = nextData?.props?.pageProps?.dataList || [];
+    // Cache for 5 minutes
+    redisCache.set(cacheKey, list, 300);
+    return list;
+  } catch (err) {
+    console.error("Failed to fetch Groww closed IPOs:", err?.message || err);
+    return [];
   }
+}
 
-  // Base values for simulation
-  const isGood = ipo.gmpPercent > 20;
-  const issuePrice = ipo.maxPrice;
-  const listPrice = issuePrice + (ipo.gmp || 15);
+app.get("/api/listing-day/companies", async (req, res) => {
+  try {
+    const list = await getClosedIPOList();
+    const mapped = list.map((ipo: any) => ({
+      symbol: ipo.symbol || ipo.searchId || ipo.companyCode || null,
+      companyName: ipo.companyName || ipo.name || ipo.company || null,
+      issuePrice: ipo.issuePrice ?? ipo.minPrice ?? ipo.maxPrice ?? null,
+      subscription: ipo.overallSubscription ?? ipo.subscriptionOverall ?? null,
+      openingDate: ipo.openingDate || ipo.openDate || null,
+      closingDate: ipo.closingDate || ipo.closeDate || null,
+      listingDate: ipo.listingDate || (ipo.listingTimestamp ? new Date(ipo.listingTimestamp).toISOString().split("T")[0] : null),
+      isListed: ipo.isListed ?? Boolean(ipo.listingPrice) ?? false,
+      listingPrice: ipo.listingPrice ?? null,
+      listingReturn: ipo.listingReturn ?? null,
+      isSme: ipo.isSme ?? false,
+      logoUrl: ipo.logoUrl || null,
+      rtaLink: ipo.rtaLink || null
+    }));
+    res.json(mapped);
+  } catch (err) {
+    console.error("/api/listing-day/companies error:", err);
+    res.status(500).json({ error: "Failed to fetch companies" });
+  }
+});
 
-  if (!liveListingCache[symbol]) {
-    liveListingCache[symbol] = {
-      symbol: symbol.toUpperCase(),
-      openPrice: listPrice,
-      highPrice: listPrice * 1.08,
-      lowPrice: listPrice * 0.96,
-      currentPrice: listPrice * 1.02,
-      volume: 4500000,
-      vwap: listPrice * 1.01,
-      rsi: isGood ? 68 : 42,
-      macd: isGood ? "Bullish Crossover" : "Consolidating Range",
-      support: listPrice * 0.95,
-      resistance: listPrice * 1.10,
-      institutionalBuying: isGood ? "HIGH" : "MEDIUM",
-      retailSelling: isGood ? "MEDIUM" : "HIGH",
-      aiRecommendation: isGood ? "BOOK PARTIAL" : "EXIT",
-      aiConfidence: isGood ? 88 : 75,
-      reasoning: isGood 
-        ? "Stock opened at a 38% premium. Heavy institutional buying support at open is stabilizing VWAP. Suggest booking 50% partial profits and trailing stop-loss for the remainder."
-        : "Stock is trading at a slight discount. High retail selling pressure is breaking support levels. Exit immediately to preserve capital.",
-      lastUpdated: new Date().toISOString()
-    };
-  } else {
-    // Simulate minor price ticks (Random Walk)
-    const prev = liveListingCache[symbol];
-    const changePercent = (Math.random() - 0.48) * 0.015; // slightly bullish drift
-    prev.currentPrice = Number((prev.currentPrice * (1 + changePercent)).toFixed(2));
-    prev.volume += Math.floor(Math.random() * 85000);
-    prev.vwap = Number(((prev.vwap * 0.95) + (prev.currentPrice * 0.05)).toFixed(2));
-    prev.highPrice = Math.max(prev.highPrice, prev.currentPrice);
-    prev.lowPrice = Math.min(prev.lowPrice, prev.currentPrice);
-    prev.rsi = Math.min(95, Math.max(5, Math.round(prev.rsi + (Math.random() - 0.5) * 4)));
-    prev.lastUpdated = new Date().toISOString();
+app.post("/api/listing-day/analyze", async (req, res) => {
+  const { symbol } = req.body || {};
+  if (!symbol) return res.status(400).json({ error: "symbol is required" });
 
-    if (prev.currentPrice > prev.vwap * 1.03) {
-      prev.aiRecommendation = "SELL NOW";
-      prev.reasoning = "Price is significantly stretched above VWAP. RSI shows overbought conditions at " + prev.rsi + ". Recommend immediate SELL to book maximum gains.";
-    } else if (prev.currentPrice < prev.support) {
-      prev.aiRecommendation = "EXIT";
-      prev.reasoning = "Stock broken key immediate support. Heavy retail selling volume detected. Exit fully to minimize downside risk.";
-    } else if (isGood) {
-      prev.aiRecommendation = "HOLD";
-      prev.reasoning = "Consistent institutional buying is keeping the price steady near high. RSI is stable at " + prev.rsi + ". Recommend HOLD with trailing stop loss at " + Math.round(prev.support) + ".";
+  try {
+    const list = await getClosedIPOList();
+    const ipo = list.find((i: any) => {
+      if (!i) return false;
+      const s = (i.symbol || i.searchId || i.companyCode || "").toString().toLowerCase();
+      return s === String(symbol).toLowerCase();
+    });
+    if (!ipo) return res.status(404).json({ error: "IPO not found" });
+
+    const client = getGroqClient();
+
+    if (ipo.isListed || ipo.listingPrice) {
+      // CASE 1: already listed — generate an AI summary of actual listing performance
+      const payload = {
+        companyName: ipo.companyName || ipo.name,
+        symbol: ipo.symbol,
+        issuePrice: ipo.issuePrice ?? ipo.minPrice ?? ipo.maxPrice ?? null,
+        listingPrice: ipo.listingPrice ?? null,
+        listingReturn: ipo.listingReturn ?? null,
+        subscription: ipo.overallSubscription ?? ipo.subscriptionOverall ?? null
+      };
+
+      if (!client) {
+        // Local fallback summary
+        const summary = `The IPO listed at ₹${payload.listingPrice} vs issue price ₹${payload.issuePrice}, delivering a ${payload.listingReturn}% return. Subscription was ${payload.subscription}x, which ${payload.subscription > 1 ? "supported" : "did not support"} listing demand.`;
+        return res.json({
+          status: "listed",
+          companyName: payload.companyName,
+          symbol: payload.symbol,
+          issuePrice: payload.issuePrice,
+          listingPrice: payload.listingPrice,
+          listingReturn: payload.listingReturn,
+          subscription: payload.subscription,
+          summary
+        });
+      }
+
+      try {
+        const prompt = `You are a concise financial analyst. Given the IPO result below, write a short JSON response with a single field \"summary\" (max 3 sentences) explaining listing performance, demand, subscription impact and whether the outcome matched expectations. Return only valid JSON.
+\nINPUT:\n${JSON.stringify(payload, null, 2)}`;
+
+        const start = Date.now();
+        const response = await client.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        });
+        const content = response.choices[0]?.message?.content;
+        const parsed = content ? JSON.parse(content) : { summary: "" };
+        await writeApiUsageLog(null, "/api/listing-day/analyze", "GROQ", response.usage?.total_tokens || 0, Date.now() - start, 200);
+        return res.json({
+          status: "listed",
+          companyName: payload.companyName,
+          symbol: payload.symbol,
+          issuePrice: payload.issuePrice,
+          listingPrice: payload.listingPrice,
+          listingReturn: payload.listingReturn,
+          subscription: payload.subscription,
+          summary: parsed.summary || ""
+        });
+      } catch (err) {
+        handleGroqError(err);
+        console.error("Groq error in listing summary:", err);
+        return res.json({
+          status: "listed",
+          companyName: payload.companyName,
+          symbol: payload.symbol,
+          issuePrice: payload.issuePrice,
+          listingPrice: payload.listingPrice,
+          listingReturn: payload.listingReturn,
+          subscription: payload.subscription,
+          summary: "Unable to generate AI summary at this time."
+        });
+      }
     }
-  }
 
-  res.json(liveListingCache[symbol]);
+    // CASE 2: not listed — send minimal fields to Groq for prediction
+    const inputForModel = {
+      companyName: ipo.companyName || ipo.name,
+      issuePrice: ipo.issuePrice ?? ipo.minPrice ?? ipo.maxPrice ?? null,
+      overallSubscription: ipo.overallSubscription ?? ipo.subscription ?? ipo.subscriptionOverall ?? null,
+      isSme: ipo.isSme ?? false,
+      openingDate: ipo.openingDate || ipo.openDate || null,
+      closingDate: ipo.closingDate || ipo.closeDate || null
+    };
+
+    if (!client) {
+      // Local heuristic predictor
+      const issue = Number(inputForModel.issuePrice) || 0;
+      const sub = Number(inputForModel.overallSubscription) || 0;
+      const expectedReturn = sub > 0 ? Math.min(60, Math.round(sub * 1.5 * 10) / 10) : 5;
+      const estimatedListingPrice = Number((issue * (1 + expectedReturn / 100)).toFixed(2));
+      const confidence = sub >= 20 ? "High" : sub >= 5 ? "Moderate" : "Low";
+      const summary = `Based on the subscription of ${sub}x and issue price ₹${issue}, the model estimates a listing around ₹${estimatedListingPrice} (${expectedReturn}% expected return).`;
+      return res.json({
+        status: "predicted",
+        companyName: inputForModel.companyName,
+        symbol: ipo.symbol,
+        issuePrice: issue,
+        estimatedListingPrice,
+        expectedReturn,
+        confidence,
+        subscription: sub,
+        summary
+      });
+    }
+
+    // Call Groq with only the allowed fields
+    try {
+      const prompt = `You are an expert IPO analyst. Given the following IPO details, provide a JSON object with fields: estimatedListingPrice (number), expectedReturn (percent number), confidence (Low|Moderate|High), summary (max 2 sentences). Use only the provided data; do NOT reference any unofficial market prices.\n\nINPUT:\n${JSON.stringify(inputForModel, null, 2)}`;
+
+      const start = Date.now();
+      const response = await client.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      });
+      const content = response.choices[0]?.message?.content;
+      const parsed = content ? JSON.parse(content) : {};
+      await writeApiUsageLog(null, "/api/listing-day/analyze", "GROQ", response.usage?.total_tokens || 0, Date.now() - start, 200);
+
+      return res.json({
+        status: "predicted",
+        companyName: inputForModel.companyName,
+        symbol: ipo.symbol,
+        issuePrice: inputForModel.issuePrice,
+        estimatedListingPrice: parsed.estimatedListingPrice ?? null,
+        expectedReturn: parsed.expectedReturn ?? null,
+        confidence: parsed.confidence ?? null,
+        subscription: inputForModel.overallSubscription,
+        summary: parsed.summary ?? null
+      });
+    } catch (err) {
+      handleGroqError(err);
+      console.error("Groq predict error:", err);
+      // Fallback heuristic if Groq fails
+      const issue = Number(inputForModel.issuePrice) || 0;
+      const sub = Number(inputForModel.overallSubscription) || 0;
+      const expectedReturn = sub > 0 ? Math.min(60, Math.round(sub * 1.5 * 10) / 10) : 5;
+      const estimatedListingPrice = Number((issue * (1 + expectedReturn / 100)).toFixed(2));
+      const confidence = sub >= 20 ? "High" : sub >= 5 ? "Moderate" : "Low";
+      const summary = `Based on available subscription data (${sub}x) the estimated listing is ₹${estimatedListingPrice} (${expectedReturn}% expected).`;
+      return res.json({
+        status: "predicted",
+        companyName: inputForModel.companyName,
+        symbol: ipo.symbol,
+        issuePrice: issue,
+        estimatedListingPrice,
+        expectedReturn,
+        confidence,
+        subscription: sub,
+        summary
+      });
+    }
+  } catch (err) {
+    console.error("/api/listing-day/analyze error:", err);
+    res.status(500).json({ error: "Failed to analyze IPO" });
+  }
 });
 
 // 11. PostgreSQL-backed Watchlist Endpoints
