@@ -548,6 +548,7 @@ useEffect(() => {
                     <th className="py-2.5 font-mono">Current Price</th>
                     <th className="py-2.5 font-mono">Current Value</th>
                     <th className="py-2.5 font-mono text-right">Absolute P&L</th>
+                    <th className="py-2.5 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -565,6 +566,16 @@ useEffect(() => {
                         <td className="py-3 font-mono font-bold">₹{val.toLocaleString()}</td>
                         <td className={`py-3 font-mono text-right font-bold ${pnl >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                           ₹{pnl.toLocaleString()} ({pnl >= 0 ? "+" : ""}{pnlP.toFixed(1)}%)
+                        </td>
+                        <td className="py-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => console.log("Delete holding", h.id)}
+                            className="inline-flex items-center justify-center rounded-lg p-2 text-rose-500 hover:bg-rose-500/10 transition-colors"
+                            title="Delete holding"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     );
