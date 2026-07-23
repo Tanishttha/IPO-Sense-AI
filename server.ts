@@ -2026,123 +2026,15 @@ seedMissingDatabaseTables();
 // --- NEW SCHEMA TABLE ENDPOINTS ---
 
 // --- PORTFOLIO ENDPOINTS ---
-// GET: Return the authenticated user's portfolio holdings
 app.get("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
   try {
-    // Fetch portfolio rows for user from Postgres
-    const holdings = await postgresDb.query.portfolio.findMany({
-      where: eq(postgresDb.schema.portfolio.userId, req.dbUser!.id),
+    const holdings = await postgresDb.query.portfolioHoldings.findMany({
+      where: eq(dbPortfolioHoldings.userId, req.dbUser!.id),
     });
     res.json(holdings);
   } catch (err: any) {
     console.error("Fetch portfolio failed:", err);
     res.status(500).json({ error: "Failed to fetch portfolio holdings." });
-  }
-});
-
-// POST: Add a new holding to the user's portfolio
-app.post("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
-  const { ipoId, ipoName, symbol, avgCost, quantity, currentPrice, status, realizedPnL } = req.body;
-  if (!ipoId || !ipoName || !symbol || avgCost === undefined || quantity === undefined) {
-    return res.status(400).json({ error: "ipoId, ipoName, symbol, avgCost, and quantity are required fields." });
-  }
-  try {
-    const [inserted] = await postgresDb.insert(postgresDb.schema.portfolio)
-      .values({
-        userId: req.dbUser!.id,
-        ipoId,
-        ipoName,
-        symbol,
-        avgCost: Number(avgCost),
-        quantity: Number(quantity),
-        currentPrice: currentPrice !== undefined ? Number(currentPrice) : null,
-        status: status || "HELD",
-        realizedPnL: realizedPnL !== undefined ? Number(realizedPnL) : 0,
-      })
-      .returning();
-    await writeAuditLog(
-      req.dbUser!.id,
-      "PORTFOLIO_ADD",
-      `Added holding: ${symbol} (${ipoName}) x${quantity} @${avgCost}`
-    );
-    res.json({ success: true, holding: inserted });
-  } catch (err: any) {
-    console.error("Insert portfolio holding failed:", err);
-    res.status(500).json({ error: "Failed to add portfolio holding." });
-  }
-});
-
-// PATCH: Adjust portfolio holding (buy/sell/update fields)
-app.patch("/api/portfolio/:holdingId", requireAuth, async (req: AuthRequest, res) => {
-  const { holdingId } = req.params;
-  if (!holdingId) {
-    return res.status(400).json({ error: "holdingId is required in path." });
-  }
-  // Only allow updates to relevant fields
-  const allowedFields = ["avgCost", "quantity", "currentPrice", "status", "realizedPnL"];
-  const updateData: any = {};
-  for (const field of allowedFields) {
-    if (req.body[field] !== undefined) {
-      updateData[field] = req.body[field];
-    }
-  }
-  if (Object.keys(updateData).length === 0) {
-    return res.status(400).json({ error: "No updatable fields provided." });
-  }
-  try {
-    const [updated] = await postgresDb
-      .update(postgresDb.schema.portfolio)
-      .set(updateData)
-      .where(
-        and(
-          eq(postgresDb.schema.portfolio.id, Number(holdingId)),
-          eq(postgresDb.schema.portfolio.userId, req.dbUser!.id)
-        )
-      )
-      .returning();
-    if (!updated) {
-      return res.status(404).json({ error: "Portfolio holding not found." });
-    }
-    await writeAuditLog(
-      req.dbUser!.id,
-      "PORTFOLIO_UPDATE",
-      `Updated holding #${holdingId}: ${JSON.stringify(updateData)}`
-    );
-    res.json({ success: true, holding: updated });
-  } catch (err: any) {
-    console.error("Update portfolio holding failed:", err);
-    res.status(500).json({ error: "Failed to update portfolio holding." });
-  }
-});
-
-// DELETE: Remove a holding from the user's portfolio
-app.delete("/api/portfolio/:holdingId", requireAuth, async (req: AuthRequest, res) => {
-  const { holdingId } = req.params;
-  if (!holdingId) {
-    return res.status(400).json({ error: "holdingId is required in path." });
-  }
-  try {
-    const [deleted] = await postgresDb
-      .delete(postgresDb.schema.portfolio)
-      .where(
-        and(
-          eq(postgresDb.schema.portfolio.id, Number(holdingId)),
-          eq(postgresDb.schema.portfolio.userId, req.dbUser!.id)
-        )
-      )
-      .returning();
-    if (!deleted) {
-      return res.status(404).json({ error: "Portfolio holding not found." });
-    }
-    await writeAuditLog(
-      req.dbUser!.id,
-      "PORTFOLIO_DELETE",
-      `Deleted holding #${holdingId}`
-    );
-    res.json({ success: true, holding: deleted });
-  } catch (err: any) {
-    console.error("Delete portfolio holding failed:", err);
-    res.status(500).json({ error: "Failed to delete portfolio holding." });
   }
 });
 

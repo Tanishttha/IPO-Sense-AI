@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { adminAuth } from "../lib/firebase-admin.ts";
 import { db } from "../db/index.ts";
-import { users, userSettings } from "../db/schema.ts";
+import { users, userSettings, portfolioHoldings } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { secretsManager } from "./security.ts";
@@ -150,9 +150,24 @@ export const requireAuth = async (
     }
   } catch (jwtErr) {
     if (jwtErr instanceof jwt.TokenExpiredError) {
-      return res.status(401).json({ error: "UNAUTHORIZED_EXPIRED", message: "JWT Access Token expired" });
+      return res.status(401).json({
+        error: "UNAUTHORIZED_EXPIRED",
+        message: "JWT Access Token expired",
+      });
     }
-    // Fall back to Firebase verification if custom JWT verify failed for other reasons
+
+    // Only try Firebase verification if the token looks like a Firebase ID token.
+    // Custom JWTs (three-part HS256 tokens issued by this backend) should not be
+    // passed to Firebase Admin.
+    const looksLikeFirebaseToken =
+      token.split(".").length === 3 &&
+      !token.includes("GOOGLE_UID_");
+
+    if (!looksLikeFirebaseToken) {
+      return res.status(401).json({
+        error: "Unauthorized: Invalid access token",
+      });
+    }
   }
 
   try {
@@ -218,7 +233,7 @@ export const requireAuth = async (
 
     next();
   } catch (error: any) {
-    console.error("Error verifying Firebase ID token:", error);
+    console.warn("Firebase token verification failed:", error?.message ?? error);
     return res.status(401).json({ error: "Unauthorized: Invalid or expired token" });
   }
 };

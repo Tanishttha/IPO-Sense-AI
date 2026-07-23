@@ -232,10 +232,11 @@ export default function App() {
 
 const fetchPortfolio = async () => {
   try {
-    const historyRes = await fetch("/api/portfolio/history");
-    if (!historyRes.ok) return;
+const portfolioRes = await fetch("/api/portfolio");
+if (!portfolioRes.ok) return;
 
-    const response = await historyRes.json();
+
+const response = await portfolioRes.json();
     const holdings = Array.isArray(response)
       ? response
       : response?.holdings ?? response?.data ?? response?.items ?? [];
@@ -246,7 +247,6 @@ const fetchPortfolio = async () => {
       return;
     }
 
-    portfolioRef.current = holdings;
     const normalizedHoldings = holdings.map((h: any) => ({
       ...h,
       quantity: Number(h.quantity ?? h.shares ?? 0),
@@ -257,7 +257,10 @@ const fetchPortfolio = async () => {
     portfolioRef.current = normalizedHoldings;
     setPortfolio(normalizedHoldings);
 
-    const symbols = holdings.map((h: any) => h.symbol).join(",");
+const symbols = normalizedHoldings
+  .map((h: any) => h.symbol)
+  .filter(Boolean)
+  .join(",");
     if (!symbols) return;
 
     const liveRes = await fetch(`/api/groww/holdings/live?symbols=${encodeURIComponent(symbols)}`);
