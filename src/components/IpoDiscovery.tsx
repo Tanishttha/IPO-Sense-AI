@@ -108,7 +108,7 @@ function NotificationPreferencesPanel() {
         <span>Multichannel Alert Hub</span>
       </h4>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Stay updated with real-time Grey Market Premium jumps and official NSE allotment announcements.
+        Stay updated with official IPO announcements, subscription updates, allotment results, and listing notifications.
       </p>
 
       <div className="space-y-3 pt-2">
@@ -405,11 +405,12 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
   const sectors = Array.from(new Set(sourceIpos.map((ipo) => ipo.industry).filter(Boolean)));
 
   // Helper to parse issue size to a numeric Cr value
-  const getIssueSizeInCr = (sizeStr: string): number => {
-    if (!sizeStr) return 0;
-    const clean = sizeStr.replace(/[^0-9.]/g, "");
+  const getIssueSizeInCr = (sizeStr: string | number | null | undefined): number => {
+    if (sizeStr === null || sizeStr === undefined) return 0;
+
+    const clean = String(sizeStr).replace(/[^0-9.]/g, "");
     const val = parseFloat(clean);
-    return isNaN(val) ? 0 : val;
+    return Number.isNaN(val) ? 0 : val;
   };
 
   const filteredIpos = sourceIpos.filter(ipo => {
@@ -862,7 +863,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
         <div>
           <h2 className="text-2xl font-bold tracking-tight">IPO Directory & Intelligence</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Discover live IPO openings, analyze prospectuses, and track Grey Market intelligence.
+            Discover live IPO openings, analyze prospectuses, and track IPO insights.
           </p>
         </div>
 
@@ -938,17 +939,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                   <Layers className="h-3.5 w-3.5" />
                   <span>List View</span>
                 </button>
-                <button
-                  onClick={() => setDirectoryTab("gmp-chart")}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1 ${
-                    directoryTab === "gmp-chart"
-                      ? "bg-card text-foreground shadow-sm font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  <span>GMP Graph</span>
-                </button>
+                {/* Removed GMP Graph button */}
                 <button
                   onClick={() => setDirectoryTab("subscription-chart")}
                   className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1 ${
@@ -1115,7 +1106,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
             {/* Left side (Col-span 2) */}
             <div className="xl:col-span-2 space-y-4 animate-fadeIn">
-              {directoryTab === "gmp-chart" && renderGmpChart()}
+              {/* Removed GMP Chart conditional render */}
               {directoryTab === "subscription-chart" && renderSubscriptionChart()}
               {directoryTab === "timeline" && renderIpoTimeline()}
               {directoryTab === "list" && (
@@ -1229,12 +1220,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                       <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Issue Size</span>
                       <p className="text-sm font-semibold text-foreground mt-0.5">{ipo.issueSize}</p>
                     </div>
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Grey Market Premium</span>
-                      <p className={`text-sm font-bold mt-0.5 flex items-center ${isGmpPositive ? "text-emerald-500" : "text-rose-500"}`}>
-                        ₹{ipo.gmp ?? 0} ({(ipo.gmpPercent ?? 0) > 0 ? "+" : ""}{ipo.gmpPercent ?? 0}%)
-                      </p>
-                    </div>
+                    {/* Removed Grey Market Premium block */}
                     <div>
                       <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground">Overall Subscription</span>
                       <p className="text-sm font-semibold text-foreground mt-0.5">

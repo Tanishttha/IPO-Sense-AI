@@ -2039,6 +2039,38 @@ app.get("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+app.delete("/api/portfolio/:id", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const holdingId = Number(req.params.id);
+
+    if (Number.isNaN(holdingId)) {
+      return res.status(400).json({ error: "Invalid portfolio holding id." });
+    }
+
+    const deleted = await postgresDb
+      .delete(portfolioHoldings)
+      .where(
+        and(
+          eq(portfolioHoldings.id, holdingId),
+          eq(portfolioHoldings.userId, req.dbUser!.id)
+        )
+      )
+      .returning();
+
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: "Portfolio holding not found." });
+    }
+
+    res.json({
+      success: true,
+      deleted: deleted[0],
+    });
+  } catch (err: any) {
+    console.error("Delete portfolio holding failed:", err);
+    res.status(500).json({ error: "Failed to delete portfolio holding." });
+  }
+});
+
 // --- HISTORICAL IPO TABLES ENDPOINTS ---
 app.get("/api/historical-ipos", async (req, res) => {
   try {
@@ -2196,18 +2228,76 @@ app.get("/api/ipo/groww/open", async (req, res) => {
 
     const data = await response.json();
 
-const results = (data?.data?.content || [])
-  .filter((item: any) => item.entity_type === "Stocks")
-  .map((item: any) => ({
-    id: item.search_id,
-    companyName: item.title,
-    symbol: item.nse_scrip_code,
-    nseScripCode: item.nse_scrip_code,
-    searchId: item.search_id,
-    isin: item.isin,
-  }));
+    console.log("===== GROWW IPO RAW RESPONSE =====");
+    console.log(JSON.stringify(data, null, 2));
 
-res.json(results);
+    const rawList =
+      data?.ipoList ??
+      data?.data?.ipoList ??
+      data?.data?.content ??
+      data?.content ??
+      [];
+
+    const results = rawList.map((item: any, index: number) => {
+      const category = item.categories?.find((c: any) => c.category === "IND") || item.categories?.[0] || {};
+
+      return {
+        id: item.searchId || item.search_id || item.companyCode || item.symbol || `groww-${index}`,
+        name: item.companyName || item.title || item.name || "Unknown IPO",
+        companyName: item.companyName || item.title || item.name || "Unknown IPO",
+        symbol: item.symbol || item.nse_scrip_code || "",
+        searchId: item.searchId || item.search_id || null,
+        nseScripCode: item.nse_scrip_code || item.symbol || "",
+        isin: item.isin || "",
+        priceBand: category.minPrice && category.maxPrice
+          ? `₹${category.minPrice} - ₹${category.maxPrice}`
+          : "TBA",
+        minPrice: category.minPrice || 0,
+        maxPrice: category.maxPrice || 0,
+        lotSize: category.lotSize || 0,
+        issueSize: category.lotSize || item.issueSize || "TBA",
+
+        openDate: item.bidStartTimestamp
+          ? new Date(item.bidStartTimestamp).toISOString().split("T")[0]
+          : (item.openDate || item.open_date || "TBA"),
+
+        closeDate: item.bidEndTimestamp
+          ? new Date(item.bidEndTimestamp).toISOString().split("T")[0]
+          : (item.closeDate || item.close_date || "TBA"),
+
+        listingDate:
+          item.listingDate ||
+          item.listing_date ||
+          item.expectedListingDate ||
+          "TBA",
+
+        bidStartTimestamp: item.bidStartTimestamp || null,
+        bidEndTimestamp: item.bidEndTimestamp || null,
+
+        leadManagers: [],
+        competitors: [],
+        strengths: [],
+        risks: [],
+        financials: [],
+        industry: item.industry || "Unknown",
+        objectOfIssue: item.objectOfIssue || "",
+        recommendation: "MODERATE",
+        aiScore: 0,
+        aiConfidence: 0,
+        riskScore: 0,
+        gmp: item.gmp || 0,
+        gmpPercent: item.gmpPercent || 0,
+        subscriptionOverall: item.overallSubscription || 0,
+        subscriptionRetail: 0,
+        subscriptionQib: 0,
+        subscriptionHni: 0,
+        status: item.isPreApply ? "UPCOMING" : "ACTIVE"
+      };
+    });
+
+    console.log(`Groww IPOs Parsed: ${results.length}`);
+
+    res.json(results);
   } catch (error) {
     console.error("Groww IPO proxy failed:", error);
     return res.status(500).json({

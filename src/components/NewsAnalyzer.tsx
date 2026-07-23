@@ -427,22 +427,6 @@ export default function NewsAnalyzer() {
           <h3 className="text-xs font-black text-foreground uppercase tracking-widest font-mono">
             Live Financial News Stream
           </h3>
-
-          <div className="flex bg-muted/50 p-1 rounded-xl border border-border text-xs self-start">
-            {(["ALL", "BULLISH", "BEARISH", "NEUTRAL"] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setSentimentFilter(tab)}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  sentimentFilter === tab
-                    ? "bg-primary text-primary-foreground shadow"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
         </div>
 
         {loading && (

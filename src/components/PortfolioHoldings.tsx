@@ -33,10 +33,11 @@ interface PortfolioProps {
   watchlist: string[];
   onToggleWatchlist: (ipoId: string) => void;
   onAddHolding: (ipoId: string, avgCost: number, quantity: number) => Promise<void>;
+  onDeleteHolding: (id: number | string) => Promise<void>;
   onRebalance?: (ipoId: string, action: string, message: string) => void;
 }
 
-export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleWatchlist, onAddHolding, onRebalance }: PortfolioProps) {
+export default function PortfolioHoldings({ holdings, ipos, watchlist, onToggleWatchlist, onAddHolding, onDeleteHolding, onRebalance }: PortfolioProps) {
   const [selectedIpoId, setSelectedIpoId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
@@ -553,7 +554,16 @@ useEffect(() => {
                         <td className="py-3 text-center">
                           <button
                             type="button"
-                            onClick={() => console.log("Delete holding", h.id)}
+                            onClick={async () => {
+                              if (!window.confirm(`Delete holding ${h.symbol}?`)) return;
+
+                              try {
+                                await onDeleteHolding(h.id);
+                              } catch (err) {
+                                console.error(err);
+                                alert("Failed to delete holding.");
+                              }
+                            }}
                             className="inline-flex items-center justify-center rounded-lg p-2 text-rose-500 hover:bg-rose-500/10 transition-colors"
                             title="Delete holding"
                           >
