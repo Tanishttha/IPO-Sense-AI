@@ -66,11 +66,44 @@ export default function App() {
 
   // Watchlist state backed by PostgreSQL
   const [watchlist, setWatchlist] = useState<string[]>([]);
+const getAccessToken = () =>
+  localStorage.getItem("iposense_access_token") || "";
 
+const getCsrfToken = async () => {
+  const cached = sessionStorage.getItem("iposense_csrf_token");
+  if (cached) return cached;
+
+  const res = await fetch("/api/auth/csrf-token");
+  const data = await res.json();
+
+  sessionStorage.setItem("iposense_csrf_token", data.csrfToken);
+  return data.csrfToken;
+};
+
+const apiFetch = async (url: string, options: RequestInit = {}) => {
+  const headers = new Headers(options.headers || {});
+
+  const token = getAccessToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const method = (options.method || "GET").toUpperCase();
+
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrf = await getCsrfToken();
+    headers.set("X-CSRF-Token", csrf);
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};
 
   const fetchWatchlist = async () => {
     try {
-      const res = await fetch("/api/watchlist");
+      const res = await apiFetch("/api/watchlist")
       if (res.ok) {
         const data = await res.json();
         setWatchlist(data);
@@ -86,7 +119,7 @@ export default function App() {
 
     try {
       const endpoint = isWatchlisted ? "/api/watchlist/remove" : "/api/watchlist";
-      await fetch(endpoint, {
+      await apiFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ipoSymbol })
@@ -198,7 +231,7 @@ export default function App() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("/api/notifications");
+      const res = await apiFetch("/api/notifications");
       if (res.ok) {
         const data = await res.json();
         setNotifications(prev => {
@@ -220,7 +253,7 @@ export default function App() {
 
   const fetchApplications = async () => {
     try {
-      const res = await fetch("/api/applications");
+      const res = await apiFetch("/api/applications");
       if (res.ok) {
         const data = await res.json();
         setApplications(data);
@@ -232,7 +265,7 @@ export default function App() {
 
 const fetchPortfolio = async () => {
   try {
-const portfolioRes = await fetch("/api/portfolio");
+const portfolioRes = await apiFetch("/api/portfolio")
 if (!portfolioRes.ok) return;
 
 
@@ -301,7 +334,7 @@ const symbols = normalizedHoldings
     avgCost: number,
     quantity: number
   ) => {
-    const growwRes = await fetch(`/api/groww/holding/${encodeURIComponent(ipoId)}`);
+    const growwRes = await apiFetch(`/api/groww/holding/${encodeURIComponent(ipoId)}`)
 
     let symbol = ipoId;
     let companyName = ipoId;
@@ -338,14 +371,29 @@ const symbols = normalizedHoldings
       currentPrice: avgCost,
     } as PortfolioHolding;
 
-    console.log("Holding added", holding);
-    setPortfolio(prev => {
-      const next = [...prev, holding];
-      portfolioRef.current = next;
-      return next;
+    const portfolioRes = await apiFetch("/api/portfolio", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ipoId,
+        symbol,
+        companyName,
+        avgCost,
+        quantity,
+        currentPrice: avgCost,
+      }),
     });
 
-    await fetch("/api/portfolio/history/record", {
+    if (!portfolioRes.ok) {
+      const error = await portfolioRes.text();
+      throw new Error(error || "Failed to save portfolio holding");
+    }
+
+    console.log("Holding added", holding);
+
+    await apiFetch("/api/portfolio/history/record", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -360,14 +408,12 @@ const symbols = normalizedHoldings
       }),
     });
 
-    setTimeout(() => {
-      fetchPortfolio();
-    }, 100);
+    await fetchPortfolio();
   };
 
   const handleClearNotifications = async () => {
     try {
-      const res = await fetch("/api/notifications/clear", { method: "POST" });
+      const res = await apiFetch("/api/notifications/clear", { method: "POST" });
       if (res.ok) {
         setNotifications([]);
       }
@@ -378,7 +424,7 @@ const symbols = normalizedHoldings
 
   const handleNseSync = async () => {
     try {
-      const res = await fetch("/api/applications/nse-sync", { method: "POST" });
+      const res = await apiFetch("/api/applications/nse-sync", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setApplications(data.applications);
@@ -512,7 +558,7 @@ const symbols = normalizedHoldings
     upiId: string;
   }) => {
     try {
-      const res = await fetch("/api/applications", {
+      const res = await apiFetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(app)
@@ -532,7 +578,7 @@ const symbols = normalizedHoldings
   // Check allotment handler
   const handleCheckAllotment = async (appNumber: string, pan: string) => {
     try {
-      const res = await fetch("/api/allotment-check", {
+      const res = await apiFetch("/api/allotment-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ appNumber, pan })

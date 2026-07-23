@@ -542,8 +542,7 @@ useEffect(() => {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
-                    <th className="py-2.5">Holdings (IPO)</th>
-                    <th className="py-2.5 font-mono">Symbol</th>
+                    <th className="py-2.5 font-mono">Holdings (IPO)</th>
                     <th className="py-2.5 font-mono">Avg Cost</th>
                     <th className="py-2.5 font-mono">Quantity</th>
                     <th className="py-2.5 font-mono">Current Price</th>
@@ -559,7 +558,6 @@ useEffect(() => {
                     const pnlP = cost > 0 ? (pnl / cost) * 100 : 0;
                     return (
                       <tr key={h.id} className="border-b border-border text-foreground hover:bg-muted/10">
-                        <td className="py-3 font-semibold">{h.ipoName}</td>
                         <td className="py-3 font-mono text-primary font-bold">{h.symbol}</td>
                         <td className="py-3 font-mono">₹{h.avgCost}</td>
                         <td className="py-3 font-mono">{h.quantity} Sh</td>

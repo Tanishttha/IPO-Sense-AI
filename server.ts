@@ -18,6 +18,7 @@ import {
   aiPredictions as dbAiPredictions, 
   userSettings as dbUserSettings,
   portfolioHistory as dbPortfolioHistory,
+  portfolioHoldings,
   historicalIpos as dbHistoricalIpos,
   marketData as dbMarketData,
   auditLogs as dbAuditLogs,
@@ -2029,7 +2030,7 @@ seedMissingDatabaseTables();
 app.get("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
   try {
     const holdings = await postgresDb.query.portfolioHoldings.findMany({
-      where: eq(dbPortfolioHoldings.userId, req.dbUser!.id),
+      where: eq(portfolioHoldings.userId, req.dbUser!.id),
     });
     res.json(holdings);
   } catch (err: any) {
@@ -3046,7 +3047,7 @@ app.post("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: "ipoId, symbol, companyName, avgCost, quantity, and currentPrice are required fields." });
   }
   try {
-    const [inserted] = await postgresDb.insert(dbPortfolioHoldings)
+    const [inserted] = await postgresDb.insert(portfolioHoldings)
       .values({
         userId: req.dbUser!.id,
         ipoId: String(ipoId),
@@ -3073,29 +3074,29 @@ app.post("/api/portfolio/adjust", requireAuth, async (req: AuthRequest, res) => 
     // Find holding for this user and ipoId
     const holding = await postgresDb.query.portfolioHoldings.findFirst({
       where: and(
-        eq(dbPortfolioHoldings.userId, req.dbUser!.id),
-        eq(dbPortfolioHoldings.ipoId, String(ipoId))
+        eq(portfolioHoldings.userId, req.dbUser!.id),
+        eq(portfolioHoldings.ipoId, String(ipoId))
       ),
     });
     if (!holding) {
       return res.status(404).json({ error: "Holding not found" });
     }
     if (action === "SELL") {
-      await postgresDb.delete(dbPortfolioHoldings)
+      await postgresDb.delete(portfolioHoldings)
         .where(
           and(
-            eq(dbPortfolioHoldings.userId, req.dbUser!.id),
-            eq(dbPortfolioHoldings.ipoId, String(ipoId))
+            eq(portfolioHoldings.userId, req.dbUser!.id),
+            eq(portfolioHoldings.ipoId, String(ipoId))
           )
         );
     } else if (action === "REBALANCE") {
       const newQty = Math.round(Number(holding.quantity) * 0.65);
-      await postgresDb.update(dbPortfolioHoldings)
+      await postgresDb.update(portfolioHoldings)
         .set({ quantity: newQty })
         .where(
           and(
-            eq(dbPortfolioHoldings.userId, req.dbUser!.id),
-            eq(dbPortfolioHoldings.ipoId, String(ipoId))
+            eq(portfolioHoldings.userId, req.dbUser!.id),
+            eq(portfolioHoldings.ipoId, String(ipoId))
           )
         );
     } else {
