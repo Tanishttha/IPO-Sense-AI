@@ -291,23 +291,6 @@ useEffect(() => {
           </p>
         </div>
 
-        {/* Action button sheets */}
-        <div className="flex space-x-2">
-          <button
-            onClick={() => triggerDownloadSimulation("EXCEL")}
-            className="flex items-center space-x-1 px-3 py-2 border border-border bg-card hover:bg-muted rounded-xl transition-all font-semibold"
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
-            <span>Excel Export</span>
-          </button>
-          <button
-            onClick={() => triggerDownloadSimulation("PDF")}
-            className="flex items-center space-x-1 px-3 py-2 border border-border bg-card hover:bg-muted rounded-xl transition-all font-semibold"
-          >
-            <FileText className="h-3.5 w-3.5 text-rose-500" />
-            <span>Tax PnL Statement</span>
-          </button>
-        </div>
       </div>
 
       {/* Export Loader Banner toast */}
