@@ -82,6 +82,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   bids: many(bids),
   notifications: many(notifications),
   portfolioHistory: many(portfolioHistory),
+  portfolioHoldings: many(portfolioHoldings),
   auditLogs: many(auditLogs),
   apiUsageLogs: many(apiUsageLogs),
   settings: one(userSettings, {
@@ -118,6 +119,10 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
   }),
 }));
 
+// NOTE:
+// portfolio_history stores portfolio valuation snapshots only.
+// portfolio_holdings stores individual stock/IPO holdings.
+// Do not store holdings inside portfolio_history.
 // Portfolio History Table
 export const portfolioHistory = pgTable("portfolio_history", {
   id: serial("id").primaryKey(),
@@ -129,6 +134,22 @@ export const portfolioHistory = pgTable("portfolio_history", {
   unrealizedGain: integer("unrealized_gain").notNull(),
   realizedGain: integer("realized_gain").notNull(),
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+
+// Portfolio Holdings Table
+export const portfolioHoldings = pgTable("portfolio_holdings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  ipoId: text("ipo_id").notNull(),
+  symbol: text("symbol").notNull(),
+  companyName: text("company_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  avgCost: integer("avg_cost").notNull(),
+  currentPrice: integer("current_price").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Historical IPOs Table
@@ -183,6 +204,13 @@ export const apiUsageLogs = pgTable("api_usage_logs", {
 export const portfolioHistoryRelations = relations(portfolioHistory, ({ one }) => ({
   user: one(users, {
     fields: [portfolioHistory.userId],
+    references: [users.id],
+  }),
+}));
+
+export const portfolioHoldingsRelations = relations(portfolioHoldings, ({ one }) => ({
+  user: one(users, {
+    fields: [portfolioHoldings.userId],
     references: [users.id],
   }),
 }));

@@ -2025,42 +2025,124 @@ seedMissingDatabaseTables();
 
 // --- NEW SCHEMA TABLE ENDPOINTS ---
 
-// --- PORTFOLIO HISTORY ENDPOINTS ---
-app.get("/api/portfolio/history", requireAuth, async (req: AuthRequest, res) => {
+// --- PORTFOLIO ENDPOINTS ---
+// GET: Return the authenticated user's portfolio holdings
+app.get("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const list = await postgresDb.select()
-      .from(dbPortfolioHistory)
-      .where(eq(dbPortfolioHistory.userId, req.dbUser!.id))
-      .orderBy(dbPortfolioHistory.recordedAt);
-    res.json(list);
+    // Fetch portfolio rows for user from Postgres
+    const holdings = await postgresDb.query.portfolio.findMany({
+      where: eq(postgresDb.schema.portfolio.userId, req.dbUser!.id),
+    });
+    res.json(holdings);
   } catch (err: any) {
-    console.error("Fetch portfolio history failed:", err);
-    res.status(500).json({ error: "Failed to fetch portfolio historical records." });
+    console.error("Fetch portfolio failed:", err);
+    res.status(500).json({ error: "Failed to fetch portfolio holdings." });
   }
 });
 
-app.post("/api/portfolio/history/record", requireAuth, async (req: AuthRequest, res) => {
-  const { totalValue, totalInvested, unrealizedGain, realizedGain } = req.body;
-  if (totalValue === undefined || totalInvested === undefined) {
-    return res.status(400).json({ error: "totalValue and totalInvested are required parameters." });
+// POST: Add a new holding to the user's portfolio
+app.post("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
+  const { ipoId, ipoName, symbol, avgCost, quantity, currentPrice, status, realizedPnL } = req.body;
+  if (!ipoId || !ipoName || !symbol || avgCost === undefined || quantity === undefined) {
+    return res.status(400).json({ error: "ipoId, ipoName, symbol, avgCost, and quantity are required fields." });
   }
-
   try {
-    const [record] = await postgresDb.insert(dbPortfolioHistory)
+    const [inserted] = await postgresDb.insert(postgresDb.schema.portfolio)
       .values({
         userId: req.dbUser!.id,
-        totalValue: Number(totalValue),
-        totalInvested: Number(totalInvested),
-        unrealizedGain: Number(unrealizedGain || 0),
-        realizedGain: Number(realizedGain || 0),
+        ipoId,
+        ipoName,
+        symbol,
+        avgCost: Number(avgCost),
+        quantity: Number(quantity),
+        currentPrice: currentPrice !== undefined ? Number(currentPrice) : null,
+        status: status || "HELD",
+        realizedPnL: realizedPnL !== undefined ? Number(realizedPnL) : 0,
       })
       .returning();
-
-    await writeAuditLog(req.dbUser!.id, "PORTFOLIO_RECORD", `Recorded portfolio history point: Value ${totalValue}, Invested ${totalInvested}`);
-    res.json({ success: true, record });
+    await writeAuditLog(
+      req.dbUser!.id,
+      "PORTFOLIO_ADD",
+      `Added holding: ${symbol} (${ipoName}) x${quantity} @${avgCost}`
+    );
+    res.json({ success: true, holding: inserted });
   } catch (err: any) {
-    console.error("Record portfolio history failed:", err);
-    res.status(500).json({ error: "Failed to preserve portfolio history snapshot." });
+    console.error("Insert portfolio holding failed:", err);
+    res.status(500).json({ error: "Failed to add portfolio holding." });
+  }
+});
+
+// PATCH: Adjust portfolio holding (buy/sell/update fields)
+app.patch("/api/portfolio/:holdingId", requireAuth, async (req: AuthRequest, res) => {
+  const { holdingId } = req.params;
+  if (!holdingId) {
+    return res.status(400).json({ error: "holdingId is required in path." });
+  }
+  // Only allow updates to relevant fields
+  const allowedFields = ["avgCost", "quantity", "currentPrice", "status", "realizedPnL"];
+  const updateData: any = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  }
+  if (Object.keys(updateData).length === 0) {
+    return res.status(400).json({ error: "No updatable fields provided." });
+  }
+  try {
+    const [updated] = await postgresDb
+      .update(postgresDb.schema.portfolio)
+      .set(updateData)
+      .where(
+        and(
+          eq(postgresDb.schema.portfolio.id, Number(holdingId)),
+          eq(postgresDb.schema.portfolio.userId, req.dbUser!.id)
+        )
+      )
+      .returning();
+    if (!updated) {
+      return res.status(404).json({ error: "Portfolio holding not found." });
+    }
+    await writeAuditLog(
+      req.dbUser!.id,
+      "PORTFOLIO_UPDATE",
+      `Updated holding #${holdingId}: ${JSON.stringify(updateData)}`
+    );
+    res.json({ success: true, holding: updated });
+  } catch (err: any) {
+    console.error("Update portfolio holding failed:", err);
+    res.status(500).json({ error: "Failed to update portfolio holding." });
+  }
+});
+
+// DELETE: Remove a holding from the user's portfolio
+app.delete("/api/portfolio/:holdingId", requireAuth, async (req: AuthRequest, res) => {
+  const { holdingId } = req.params;
+  if (!holdingId) {
+    return res.status(400).json({ error: "holdingId is required in path." });
+  }
+  try {
+    const [deleted] = await postgresDb
+      .delete(postgresDb.schema.portfolio)
+      .where(
+        and(
+          eq(postgresDb.schema.portfolio.id, Number(holdingId)),
+          eq(postgresDb.schema.portfolio.userId, req.dbUser!.id)
+        )
+      )
+      .returning();
+    if (!deleted) {
+      return res.status(404).json({ error: "Portfolio holding not found." });
+    }
+    await writeAuditLog(
+      req.dbUser!.id,
+      "PORTFOLIO_DELETE",
+      `Deleted holding #${holdingId}`
+    );
+    res.json({ success: true, holding: deleted });
+  } catch (err: any) {
+    console.error("Delete portfolio holding failed:", err);
+    res.status(500).json({ error: "Failed to delete portfolio holding." });
   }
 });
 
@@ -3058,86 +3140,80 @@ app.post("/api/allotment-check", (req, res) => {
   res.json(mockAllotmentResult);
 });
 
-// 5. Portfolio holdings
-app.get("/api/portfolio", (req, res) => {
-  db = loadDb();
-  res.json(db.portfolio);
+
+app.post("/api/portfolio", requireAuth, async (req: AuthRequest, res) => {
+  const { ipoId, symbol, companyName, avgCost, quantity, currentPrice } = req.body;
+  if (
+    !ipoId ||
+    !symbol ||
+    !companyName ||
+    avgCost === undefined ||
+    quantity === undefined ||
+    currentPrice === undefined
+  ) {
+    return res.status(400).json({ error: "ipoId, symbol, companyName, avgCost, quantity, and currentPrice are required fields." });
+  }
+  try {
+    const [inserted] = await postgresDb.insert(dbPortfolioHoldings)
+      .values({
+        userId: req.dbUser!.id,
+        ipoId: String(ipoId),
+        symbol: String(symbol),
+        companyName: String(companyName),
+        avgCost: Number(avgCost),
+        quantity: Number(quantity),
+        currentPrice: Number(currentPrice),
+      })
+      .returning();
+    res.json(inserted);
+  } catch (err: any) {
+    console.error("Insert portfolio holding failed:", err);
+    res.status(500).json({ error: "Failed to add portfolio holding." });
+  }
 });
 
-app.post("/api/portfolio", (req, res) => {
-  const { ipoId, avgCost, quantity } = req.body;
-  const ipo = getIpoById(ipoId);
-  if (!ipo) {
-    return res.status(404).json({ error: "IPO not found" });
-  }
-
-  db = loadDb();
-  const existingHolding = db.portfolio.find(p => p.ipoId === ipo.id);
-
-  if (existingHolding) {
-    existingHolding.quantity += Number(quantity);
-    existingHolding.avgCost = (existingHolding.avgCost + Number(avgCost)) / 2;
-  } else {
-    const livePrice = ipo.maxPrice + (ipo.gmp || 0);
-    db.portfolio.push({
-      id: Math.random().toString(36).substr(2, 9).toUpperCase(),
-      ipoId: ipo.id,
-      ipoName: ipo.name,
-      symbol: ipo.symbol,
-      avgCost: Number(avgCost),
-      quantity: Number(quantity),
-      currentPrice: livePrice,
-      status: "HELD",
-      realizedPnL: 0
-    });
-  }
-
-  saveDb(db);
-  res.json(db.portfolio);
-});
-
-// 5.5 Portfolio Rebalance Adjustment
-app.post("/api/portfolio/adjust", (req, res) => {
+app.post("/api/portfolio/adjust", requireAuth, async (req: AuthRequest, res) => {
   const { ipoId, action } = req.body;
-  db = loadDb();
-  
-  const holdingIndex = db.portfolio.findIndex(p => p.ipoId === ipoId);
-  if (holdingIndex === -1) {
-    return res.status(404).json({ error: "Holding not found" });
+  if (!ipoId || !action) {
+    return res.status(400).json({ error: "ipoId and action are required." });
   }
-
-  const holding = db.portfolio[holdingIndex];
-  
-  if (action === "SELL") {
-    // Liquidate the position
-    db.portfolio.splice(holdingIndex, 1);
-    
-    // Add an alert notification
-    db.notifications.unshift({
-      id: "ALERT-" + Math.floor(1000 + Math.random() * 9000),
-      title: `Portfolio Liquidation: ${holding.symbol}`,
-      message: `Direct Exchange Conduit: Fully liquidated ${holding.quantity} shares of ${holding.ipoName} to prevent capital drawdown.`,
-      type: "ALERT",
-      timestamp: new Date().toISOString()
+  try {
+    // Find holding for this user and ipoId
+    const holding = await postgresDb.query.portfolioHoldings.findFirst({
+      where: and(
+        eq(dbPortfolioHoldings.userId, req.dbUser!.id),
+        eq(dbPortfolioHoldings.ipoId, String(ipoId))
+      ),
     });
-  } else if (action === "REBALANCE") {
-    // Trim position by 35%
-    const originalQty = holding.quantity;
-    holding.quantity = Math.round(holding.quantity * 0.65);
-    const trimmedQty = originalQty - holding.quantity;
-    
-    // Add an alert notification
-    db.notifications.unshift({
-      id: "ALERT-" + Math.floor(1000 + Math.random() * 9000),
-      title: `Portfolio Rebalanced: ${holding.symbol}`,
-      message: `Risk Mitigation: Trimmed ${trimmedQty} shares of ${holding.ipoName}. Secured capital re-routed to stable liquid sectors.`,
-      type: "ALERT",
-      timestamp: new Date().toISOString()
-    });
+    if (!holding) {
+      return res.status(404).json({ error: "Holding not found" });
+    }
+    if (action === "SELL") {
+      await postgresDb.delete(dbPortfolioHoldings)
+        .where(
+          and(
+            eq(dbPortfolioHoldings.userId, req.dbUser!.id),
+            eq(dbPortfolioHoldings.ipoId, String(ipoId))
+          )
+        );
+    } else if (action === "REBALANCE") {
+      const newQty = Math.round(Number(holding.quantity) * 0.65);
+      await postgresDb.update(dbPortfolioHoldings)
+        .set({ quantity: newQty })
+        .where(
+          and(
+            eq(dbPortfolioHoldings.userId, req.dbUser!.id),
+            eq(dbPortfolioHoldings.ipoId, String(ipoId))
+          )
+        );
+    } else {
+      return res.status(400).json({ error: "Invalid action." });
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Portfolio adjust failed:", err);
+    res.status(500).json({ error: "Failed to adjust portfolio holding." });
   }
-  
-  saveDb(db);
-  res.json({ success: true, portfolio: db.portfolio, notifications: db.notifications });
 });
 
 // 6. Groq-powered IPO Analysis Route

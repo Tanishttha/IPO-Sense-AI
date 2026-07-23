@@ -232,57 +232,64 @@ export default function App() {
 
 const fetchPortfolio = async () => {
   try {
-    console.log("fetchPortfolio called", portfolioRef.current);
-    const symbols = portfolioRef.current.map(h => h.symbol).join(",");
+    const historyRes = await fetch("/api/portfolio/history");
+    if (!historyRes.ok) return;
 
-    if (!symbols) {
+    const response = await historyRes.json();
+    const holdings = Array.isArray(response)
+      ? response
+      : response?.holdings ?? response?.data ?? response?.items ?? [];
+
+    if (!Array.isArray(holdings) || holdings.length === 0) {
+      setPortfolio([]);
+      portfolioRef.current = [];
       return;
     }
 
-    const response = await fetch(
-     `/api/groww/holdings/live?symbols=${encodeURIComponent(symbols)}`
-    );
+    portfolioRef.current = holdings;
+    const normalizedHoldings = holdings.map((h: any) => ({
+      ...h,
+      quantity: Number(h.quantity ?? h.shares ?? 0),
+      avgCost: Number(h.avgCost ?? h.averagePrice ?? h.avg_price ?? 0),
+      currentPrice: Number(h.currentPrice ?? h.current_price ?? h.avgCost ?? 0),
+    }));
 
-    if (!response.ok) return;
+    portfolioRef.current = normalizedHoldings;
+    setPortfolio(normalizedHoldings);
 
-    const responseJson = await response.json();
-    console.log("Live holdings response:", responseJson);
+    const symbols = holdings.map((h: any) => h.symbol).join(",");
+    if (!symbols) return;
+
+    const liveRes = await fetch(`/api/groww/holdings/live?symbols=${encodeURIComponent(symbols)}`);
+    if (!liveRes.ok) return;
+
+    const responseJson = await liveRes.json();
     const liveData = Array.isArray(responseJson)
       ? responseJson
-      : responseJson?.data?.content ||
-        responseJson?.data ||
-        responseJson?.holdings ||
-        [];
+      : responseJson?.data?.content || responseJson?.data || responseJson?.holdings || [];
 
-    setPortfolio(prev => {
-      return prev.map(h => {
+    setPortfolio(prev =>
+      prev.map(h => {
         const live = liveData.find((x: any) =>
           x.symbol === h.symbol ||
           x.nseScripCode === h.symbol ||
           x.ticker === h.symbol
         );
-        const latestPrice = Number(
-          live?.latestPrice ??
-          live?.ltp ??
-          live?.lastPrice ??
-          live?.price
-        );
-        console.log("Matching live quote", {
-          holdingSymbol: h.symbol,
-          live,
-        });
-        console.log("Resolved latestPrice", latestPrice);
+
+        const latestPrice = Number(live?.latestPrice ?? live?.ltp ?? live?.lastPrice ?? live?.price);
+
         return {
           ...h,
-          currentPrice:
-            Number.isFinite(latestPrice) && latestPrice > 0
-              ? latestPrice
-              : h.currentPrice,
+          quantity: Number(h.quantity || 0),
+          avgCost: Number(h.avgCost || 0),
+          currentPrice: Number.isFinite(latestPrice) && latestPrice > 0
+            ? latestPrice
+            : Number(h.currentPrice || h.avgCost || 0),
         };
-      });
-    });
+      })
+    );
   } catch (e) {
-    console.error(e);
+    console.error("Failed to load portfolio", e);
   }
 };
 
@@ -333,6 +340,21 @@ const fetchPortfolio = async () => {
       const next = [...prev, holding];
       portfolioRef.current = next;
       return next;
+    });
+
+    await fetch("/api/portfolio/history/record", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ipoId,
+        symbol,
+        companyName,
+        quantity,
+        avgCost,
+        currentPrice: avgCost,
+      }),
     });
 
     setTimeout(() => {
