@@ -149,17 +149,17 @@ export function customRateLimiter(req: Request, res: Response, next: NextFunctio
 
 
 // --- 4. DOUBLE-SUBMIT/HEADER TOKEN CSRF PROTECTION ---
-export const activeCsrfTokens = new Set<string>();
+export const activeCsrfTokens = new Map<string, number>();
 
 export function generateCsrfToken(): string {
   const token = crypto.randomBytes(32).toString("hex");
-  activeCsrfTokens.add(token);
-  
-  // Cap size
+  activeCsrfTokens.set(token, Date.now());
+
   if (activeCsrfTokens.size > 20000) {
-    const firstVal = activeCsrfTokens.values().next().value;
+    const firstVal = activeCsrfTokens.keys().next().value;
     if (firstVal) activeCsrfTokens.delete(firstVal);
   }
+
   return token;
 }
 
@@ -170,13 +170,31 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   }
 
   const isCsrfStrict = secretsManager.get("CSRF_STRICT_MODE") === "true";
+  const csrfExemptRoutes = [
+    "/api/groq/chat",
+    "/api/groq/analyze"
+  ];
+
+  if (csrfExemptRoutes.includes(req.path)) {
+    return next();
+  }
+
   if (!isCsrfStrict) {
     return next();
   }
 
   const csrfTokenHeader = req.headers["x-csrf-token"];
-  
-  if (!csrfTokenHeader || typeof csrfTokenHeader !== "string" || !activeCsrfTokens.has(csrfTokenHeader)) {
+
+  const tokenTime = typeof csrfTokenHeader === "string"
+    ? activeCsrfTokens.get(csrfTokenHeader)
+    : undefined;
+
+  if (
+    !csrfTokenHeader ||
+    typeof csrfTokenHeader !== "string" ||
+    !tokenTime ||
+    Date.now() - tokenTime > 15 * 60 * 1000
+  ) {
     console.warn(`[CSRF Protection] Blocked write operation to '${req.path}' from ${req.ip || "unknown"}. Invalid CSRF token header.`);
     return res.status(403).json({
       error: "CSRF token validation failed.",
