@@ -27,8 +27,6 @@ interface DashboardProps {
   holdings?: PortfolioHolding[]; // Real holdings list array pass karein
   onNavigate: (tab: string) => void;
   applicationsCount: number;
-  portfolioValue?: number;
-  portfolioCurrentValue?: number;
   notifications?: any[];
   onClearNotifications?: () => void;
 }
@@ -38,29 +36,10 @@ export default function DashboardOverview({
   holdings = [],
   onNavigate, 
   applicationsCount, 
-  portfolioValue = 0,
-  portfolioCurrentValue = 0,
   notifications,
   onClearNotifications
 }: DashboardProps) {
 
-  // Exact calculations directly matching PortfolioHoldings
-  const totalInvestment = React.useMemo(() => {
-    if (holdings.length > 0) {
-      return holdings.reduce((sum, h) => sum + (h.avgCost * h.quantity), 0);
-    }
-    return portfolioValue;
-  }, [holdings, portfolioValue]);
-
-  const totalCurrentValue = React.useMemo(() => {
-    if (holdings.length > 0) {
-      return holdings.reduce((sum, h) => sum + (h.currentPrice * h.quantity), 0);
-    }
-    return portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioValue;
-  }, [holdings, portfolioCurrentValue, portfolioValue]);
-
-  const totalPnL = totalCurrentValue - totalInvestment;
-  const pnlPercent = totalInvestment > 0 ? (totalPnL / totalInvestment) * 100 : 0;
 
   // Scatter Chart data computation
   const scatterData = React.useMemo(() => {
@@ -129,29 +108,7 @@ export default function DashboardOverview({
         </div>
         <Activity className="h-4 w-4 text-primary shrink-0 ml-2" />
       </div>
-      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-1">
-        
-        {/* Updated Portfolio Value & Increase Card */}
-        <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
-          <div className="flex justify-between items-start text-muted-foreground">
-            <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Portfolio Value</span>
-            <TrendingUp className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-          </div>
-          <div className="mt-2">
-            <h3 className="text-lg sm:text-xl font-extrabold text-foreground">
-              ₹{totalCurrentValue.toLocaleString()}
-            </h3>
-            <span className={`text-[10px] font-medium flex items-center mt-0.5 ${totalPnL >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-              {totalPnL >= 0 ? (
-                <ArrowUpRight className="h-3 w-3 mr-0.5 shrink-0" />
-              ) : (
-                <ArrowDownRight className="h-3 w-3 mr-0.5 shrink-0" />
-              )}
-              {totalPnL >= 0 ? "+" : ""}₹{totalPnL.toLocaleString()} ({totalPnL >= 0 ? "+" : ""}{pnlPercent.toFixed(1)}%)
-            </span>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-1">
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Applied IPOs</span>
@@ -164,7 +121,6 @@ export default function DashboardOverview({
             </span>
           </div>
         </div>
-
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">AI Smart Score</span>
@@ -178,7 +134,6 @@ export default function DashboardOverview({
             </span>
           </div>
         </div>
-
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Market Heat</span>
