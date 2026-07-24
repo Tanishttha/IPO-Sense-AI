@@ -51,7 +51,7 @@ export const deleteAllotmentHistory = async (req: Request, res: Response) => {
       );
 
     res.status(204).send();
-  } catch (error) 
+  } catch (error) {
     res.status(500).json({ error: "Failed to delete allotment history" });
   }
 };

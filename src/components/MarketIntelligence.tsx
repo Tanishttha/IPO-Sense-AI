@@ -177,15 +177,6 @@ export default function MarketIntelligence() {
             Track real-time macro indices including Nifty, Sensex, BankNifty, India VIX, FII, and DII capital flows. Adjust baseline scores to evaluate hypothetical risk impacts.
           </p>
         </div>
-
-        <button
-          onClick={fetchBenchmarks}
-          disabled={loading}
-          className="flex items-center justify-center space-x-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-border transition-all cursor-pointer disabled:opacity-50 shrink-0 self-start md:self-auto"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          <span>Sync Benchmarks</span>
-        </button>
       </div>
 
       {error && (
