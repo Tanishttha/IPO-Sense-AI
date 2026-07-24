@@ -3277,7 +3277,7 @@ app.post("/api/groq/chat", async (req, res) => {
   }
 
   const client = getGroqClient();
-  const lastUserMsg = String(messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || "").trim();
+  const lastUserMsg = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || "";
 
   // Construct context with our known IPO database so chatbot responds smartly!
   const ipoContext = IPOS_DATA.map(i => 
@@ -3311,23 +3311,9 @@ Respond professionally. Keep responses concise, structured, and based only on th
   try {
     const response = await client.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: "You are IPOSense AI Assist. Always answer the user's IPO question directly. Never say that no query was provided when a user message exists."
-        },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.3
+      messages: [{ role: "user", content: prompt }]
     });
-    const text = response.choices[0]?.message?.content?.trim();
-
-    if (!text) {
-      return res.json({
-        text: `I can help analyze IPOs. Your query was: ${lastUserMsg}`
-      });
-    }
-
+    const text = response.choices[0]?.message?.content || "";
     res.json({ text });
   } catch (err) {
     handleGroqError(err);
