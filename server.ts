@@ -3277,7 +3277,7 @@ app.post("/api/groq/chat", async (req, res) => {
   }
 
   const client = getGroqClient();
-  const lastUserMsg = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || "";
+  const lastUserMsg = messages[messages.length - 1]?.text || "";
 
   // Construct context with our known IPO database so chatbot responds smartly!
   const ipoContext = IPOS_DATA.map(i => 
@@ -3289,7 +3289,7 @@ Use this context about active/upcoming IPOs:
 ${ipoContext}
 
 User asked: "${lastUserMsg}"
-Respond professionally. Keep responses concise, structured, and based only on the provided IPO context. Mention subscription or issue size only when that data is explicitly available in the context.`;
+Respond professionally. Keep responses concise, structured, bulleted, and filled with realistic data. Highlight key metrics (subscription, issue size) where appropriate.`;
 
   if (!client) {
     // Generate intelligent rule-based response if Groq is not set up
