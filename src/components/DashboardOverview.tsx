@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { 
   TrendingUp, 
   ArrowUpRight, 
+  ArrowDownRight,
   Activity, 
   CheckCircle, 
   Sparkles, 
@@ -19,27 +20,48 @@ import {
   Scatter,
   ZAxis
 } from "recharts";
-import { IPO } from "../types";
+import { IPO, PortfolioHolding } from "../types";
 
 interface DashboardProps {
   ipos: IPO[];
+  holdings?: PortfolioHolding[]; // Real holdings list array pass karein
   onNavigate: (tab: string) => void;
   applicationsCount: number;
-  portfolioValue: number;
-  portfolioCurrentValue: number;
-  notifications: any[];
-  onClearNotifications: () => void;
+  portfolioValue?: number;
+  portfolioCurrentValue?: number;
+  notifications?: any[];
+  onClearNotifications?: () => void;
 }
 
 export default function DashboardOverview({ 
   ipos, 
+  holdings = [],
   onNavigate, 
   applicationsCount, 
-  portfolioValue,
-  portfolioCurrentValue = portfolioValue,
+  portfolioValue = 0,
+  portfolioCurrentValue = 0,
   notifications,
   onClearNotifications
 }: DashboardProps) {
+
+  // Exact calculations directly matching PortfolioHoldings
+  const totalInvestment = React.useMemo(() => {
+    if (holdings.length > 0) {
+      return holdings.reduce((sum, h) => sum + (h.avgCost * h.quantity), 0);
+    }
+    return portfolioValue;
+  }, [holdings, portfolioValue]);
+
+  const totalCurrentValue = React.useMemo(() => {
+    if (holdings.length > 0) {
+      return holdings.reduce((sum, h) => sum + (h.currentPrice * h.quantity), 0);
+    }
+    return portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioValue;
+  }, [holdings, portfolioCurrentValue, portfolioValue]);
+
+  const totalPnL = totalCurrentValue - totalInvestment;
+  const pnlPercent = totalInvestment > 0 ? (totalPnL / totalInvestment) * 100 : 0;
+
   // Scatter Chart data computation
   const scatterData = React.useMemo(() => {
     const source = ipos.length > 0 ? ipos : [
@@ -62,7 +84,6 @@ export default function DashboardOverview({
     }));
   }, [ipos]);
 
-  // Scatter spotlight selected IPO
   const [selectedScatterIpo, setSelectedScatterIpo] = useState<any>(null);
 
   React.useEffect(() => {
@@ -71,7 +92,6 @@ export default function DashboardOverview({
     }
   }, [scatterData]);
 
-  // Allotment chance estimator states
   const [estimatorIpoSymbol, setEstimatorIpoSymbol] = useState<string>("");
   const [estimatorCategory, setEstimatorCategory] = useState<"retail" | "hni" | "qib">("retail");
 
@@ -110,19 +130,28 @@ export default function DashboardOverview({
         <Activity className="h-4 w-4 text-primary shrink-0 ml-2" />
       </div>
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-1">
+        
+        {/* Updated Portfolio Value & Increase Card */}
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Portfolio Value</span>
             <TrendingUp className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <h3 className="text-lg sm:text-xl font-extrabold text-foreground">₹{(portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioValue).toLocaleString()}</h3>
-            <span className="text-[10px] text-emerald-500 font-medium flex items-center mt-0.5">
-              <ArrowUpRight className="h-3 w-3 mr-0.5 shrink-0" />
-              Portfolio updated from current holdings
+            <h3 className="text-lg sm:text-xl font-extrabold text-foreground">
+              ₹{totalCurrentValue.toLocaleString()}
+            </h3>
+            <span className={`text-[10px] font-medium flex items-center mt-0.5 ${totalPnL >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+              {totalPnL >= 0 ? (
+                <ArrowUpRight className="h-3 w-3 mr-0.5 shrink-0" />
+              ) : (
+                <ArrowDownRight className="h-3 w-3 mr-0.5 shrink-0" />
+              )}
+              {totalPnL >= 0 ? "+" : ""}₹{totalPnL.toLocaleString()} ({totalPnL >= 0 ? "+" : ""}{pnlPercent.toFixed(1)}%)
             </span>
           </div>
         </div>
+
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Applied IPOs</span>
@@ -135,6 +164,7 @@ export default function DashboardOverview({
             </span>
           </div>
         </div>
+
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">AI Smart Score</span>
@@ -148,6 +178,7 @@ export default function DashboardOverview({
             </span>
           </div>
         </div>
+
         <div className="p-3 sm:p-4 rounded-xl border border-border bg-muted/25 flex flex-col justify-between hover:border-primary/20 transition-all">
           <div className="flex justify-between items-start text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Market Heat</span>
@@ -177,6 +208,7 @@ export default function DashboardOverview({
         <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-mono font-bold self-start sm:self-auto shrink-0">Quantitative Desk</span>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 pt-1">
+        
         {/* Scatter Graph */}
         <div className="xl:col-span-2 bg-muted/10 border border-border/40 rounded-xl p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-1">
@@ -253,7 +285,6 @@ export default function DashboardOverview({
         
         {/* Analytical Spotlight Panel */}
         <div className="space-y-4 flex flex-col justify-between">
-          {/* Spot 1: Selected Spotlight Deep-Dive */}
           {selectedScatterIpo && (
             <div className="bg-muted/15 border border-border/40 rounded-xl p-3 sm:p-4 space-y-3 flex-1 flex flex-col justify-between min-h-[160px]">
               <div>
@@ -295,7 +326,7 @@ export default function DashboardOverview({
             </div>
           )}
 
-          {/* Spot 2: Allotment Chance Estimator */}
+          {/* Allotment Chance Estimator */}
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-primary/10 pb-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Allotment Chance Estimator</span>
@@ -356,12 +387,10 @@ export default function DashboardOverview({
 
   return (
     <div className="space-y-4 sm:space-y-6 text-foreground p-2 sm:p-4">
-      {/* Stats overview full width */}
       <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-5 shadow-sm">
         {renderStatsOverview()}
       </div>
       
-      {/* Analytics Scatter Matrix */}
       <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-5 shadow-sm">
         {renderAnalyticsScatter()}
       </div>
