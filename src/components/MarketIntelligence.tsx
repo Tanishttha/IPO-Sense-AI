@@ -77,24 +77,65 @@ export default function MarketIntelligence() {
 
   useEffect(() => {
     fetchBenchmarks();
+
+    const interval = setInterval(() => {
+      fetchBenchmarks();
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchBenchmarks = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/market/intelligence");
+      const res = await fetch("/api/market/indices", {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error("Failed to pull market benchmarks.");
       const data = await res.json();
-      setBenchmarks(data);
-      
-      // Initialize form fields
-      setNiftyBias(data.nifty.status === "BULLISH" ? "BULLISH" : data.nifty.status === "BEARISH" ? "BEARISH" : "NEUTRAL");
-      setSensexBias(data.sensex.status === "BULLISH" ? "BULLISH" : data.sensex.status === "BEARISH" ? "BEARISH" : "NEUTRAL");
-      setBankniftyBias(data.banknifty.status === "BULLISH" ? "BULLISH" : data.banknifty.status === "BEARISH" ? "BEARISH" : "NEUTRAL");
-      setVixValue(data.indiavix.value.toString());
-      setFiiFlow(data.fii.flow.toString());
-      setDiiFlow(data.dii.flow.toString());
+      const mapped = {
+        nifty: {
+          value: data.nifty,
+          change: 0,
+          pctChange: 0,
+          status: "STABLE",
+        },
+        sensex: {
+          value: data.sensex,
+          change: 0,
+          pctChange: 0,
+          status: "STABLE",
+        },
+        banknifty: {
+          value: data.bankNifty,
+          change: 0,
+          pctChange: 0,
+          status: "STABLE",
+        },
+        indiavix: {
+          value: data.indiaVix,
+          change: 0,
+          pctChange: 0,
+          status: "STABLE",
+        },
+        fii: {
+          flow: 0,
+          status: "STABLE",
+        },
+        dii: {
+          flow: 0,
+          status: "STABLE",
+        },
+      };
+
+      setBenchmarks(mapped);
+      setVixValue(String(mapped.indiavix.value));
+      setFiiFlow("0");
+      setDiiFlow("0");
+      setNiftyBias("NEUTRAL");
+      setSensexBias("NEUTRAL");
+      setBankniftyBias("NEUTRAL");
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Unable to contact global broker gateways.");
@@ -188,96 +229,39 @@ export default function MarketIntelligence() {
 
       {/* Primary Benchmark Board Grid */}
       {benchmarks && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           {/* Nifty */}
           <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 relative overflow-hidden">
             <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase font-mono block truncate">Nifty 50</span>
-            <div className="flex justify-between items-baseline gap-1 flex-wrap">
+            <div className="flex items-baseline gap-1 flex-wrap">
               <span className="text-sm sm:text-base font-black text-foreground">{benchmarks.nifty.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(benchmarks.nifty.status)}`}>
-                {benchmarks.nifty.pctChange > 0 ? `+${benchmarks.nifty.pctChange}%` : `${benchmarks.nifty.pctChange}%`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1 text-muted-foreground">
-              <span className="truncate">Change: {benchmarks.nifty.change > 0 ? `+${benchmarks.nifty.change}` : benchmarks.nifty.change}</span>
-              {getArrowIcon(benchmarks.nifty.status)}
             </div>
           </div>
 
           {/* Sensex */}
           <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 relative overflow-hidden">
             <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase font-mono block truncate">Sensex</span>
-            <div className="flex justify-between items-baseline gap-1 flex-wrap">
+            <div className="flex items-baseline gap-1 flex-wrap">
               <span className="text-sm sm:text-base font-black text-foreground">{benchmarks.sensex.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(benchmarks.sensex.status)}`}>
-                {benchmarks.sensex.pctChange > 0 ? `+${benchmarks.sensex.pctChange}%` : `${benchmarks.sensex.pctChange}%`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1 text-muted-foreground">
-              <span className="truncate">Change: {benchmarks.sensex.change > 0 ? `+${benchmarks.sensex.change}` : benchmarks.sensex.change}</span>
-              {getArrowIcon(benchmarks.sensex.status)}
             </div>
           </div>
 
           {/* BankNifty */}
           <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 relative overflow-hidden">
             <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase font-mono block truncate">BankNifty</span>
-            <div className="flex justify-between items-baseline gap-1 flex-wrap">
+            <div className="flex items-baseline gap-1 flex-wrap">
               <span className="text-sm sm:text-base font-black text-foreground">{benchmarks.banknifty.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(benchmarks.banknifty.status)}`}>
-                {benchmarks.banknifty.pctChange > 0 ? `+${benchmarks.banknifty.pctChange}%` : `${benchmarks.banknifty.pctChange}%`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1 text-muted-foreground">
-              <span className="truncate">Change: {benchmarks.banknifty.change > 0 ? `+${benchmarks.banknifty.change}` : benchmarks.banknifty.change}</span>
-              {getArrowIcon(benchmarks.banknifty.status)}
             </div>
           </div>
 
           {/* India VIX */}
           <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 relative overflow-hidden">
             <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase font-mono block truncate">India VIX</span>
-            <div className="flex justify-between items-baseline gap-1 flex-wrap">
+            <div className="flex items-baseline gap-1 flex-wrap">
               <span className="text-sm sm:text-base font-black text-foreground">{benchmarks.indiavix.value.toFixed(2)}</span>
-              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(benchmarks.indiavix.status)}`}>
-                {benchmarks.indiavix.status}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1 text-muted-foreground">
-              <span className="truncate">Change: {benchmarks.indiavix.change > 0 ? `+${benchmarks.indiavix.change}` : benchmarks.indiavix.change}</span>
-              {getArrowIcon(benchmarks.indiavix.status)}
             </div>
           </div>
 
-          {/* FII Flows */}
-          <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 relative overflow-hidden">
-            <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase font-mono block truncate">FII Net Flow</span>
-            <div className="flex justify-between items-baseline gap-1 flex-wrap">
-              <span className="text-sm sm:text-base font-black text-foreground truncate">₹{benchmarks.fii.flow > 0 ? `+${benchmarks.fii.flow}` : benchmarks.fii.flow} Cr</span>
-              <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(benchmarks.fii.status)}`}>
-                {benchmarks.fii.status.replace("_", " ")}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1 text-muted-foreground">
-              <span className="truncate">Inst. Flow Status</span>
-              {getArrowIcon(benchmarks.fii.status)}
-            </div>
-          </div>
-
-          {/* DII Flows */}
-          <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-1.5 sm:space-y-2 relative overflow-hidden">
-            <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase font-mono block truncate">DII Net Flow</span>
-            <div className="flex justify-between items-baseline gap-1 flex-wrap">
-              <span className="text-sm sm:text-base font-black text-foreground truncate">₹{benchmarks.dii.flow > 0 ? `+${benchmarks.dii.flow}` : benchmarks.dii.flow} Cr</span>
-              <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${getStatusColor(benchmarks.dii.status)}`}>
-                {benchmarks.dii.status.replace("_", " ")}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1 text-muted-foreground">
-              <span className="truncate">Dom. Inst. Flow</span>
-              {getArrowIcon(benchmarks.dii.status)}
-            </div>
-          </div>
         </div>
       )}
 

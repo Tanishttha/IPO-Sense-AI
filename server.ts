@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import Groq from "groq-sdk";
 import axios from "axios";
+import marketRoutes from "./src/routes/market.ts";
 import * as cheerio from "cheerio";
 import jwt from "jsonwebtoken";
 import { PDFParse } from "pdf-parse";
@@ -58,7 +59,7 @@ app.use(csrfProtection);
 
 app.use("/api", allotmentRoutes);
 app.use("/api", userPanRoutes);
-
+app.use("/api", marketRoutes);
 // AES-256-CBC Encryption Key & IV Settings
 const getAesSecret = () => secretsManager.get("AES_SECRET") || "d6f51952a2d48858e3b567ef54fa86aa";
 const IV_LENGTH = 16;
