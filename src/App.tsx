@@ -717,7 +717,6 @@ const symbols = normalizedHoldings
                             onClick={() => {
                               setSimulateRateLimit(false);
                               setLoading(true);
-                              // Timeout to allow state sync before fetch
                               setTimeout(() => {
                                 fetchIpos().finally(() => setLoading(false));
                               }, 100);
@@ -747,6 +746,7 @@ const symbols = normalizedHoldings
                 {activeTab === "dashboard" && (
                   <DashboardOverview 
                     ipos={ipos} 
+                    holdings={portfolio}
                     onNavigate={setActiveTab} 
                     applicationsCount={applications.length}
                     portfolioValue={portfolioValue || 142500}
