@@ -1709,6 +1709,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
     process.env.APP_URL
       ? `${process.env.APP_URL}/auth/callback`
       : `${req.protocol}://${req.get("host")}/auth/callback`;
+  const frontendOrigin = process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
 
   try {
     // Exchange code for tokens
@@ -1806,16 +1807,25 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
             <p>Redirecting back to IPOSense workspace...</p>
           </div>
           <script>
-            const FRONTEND_ORIGIN = ${JSON.stringify(process.env.FRONTEND_URL || process.env.APP_URL || '*')};
+            const FRONTEND_ORIGIN = ${JSON.stringify(frontendOrigin)};
             try {
-              if (window.opener) {
+              if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({
                   type: 'OAUTH_AUTH_SUCCESS',
                   accessToken: '${jwtAccessToken}',
                   refreshToken: '${refreshToken}',
                   user: ${userPayload}
                 }, FRONTEND_ORIGIN);
-                window.close();
+
+                try {
+                  localStorage.setItem('iposense_access_token', '${jwtAccessToken}');
+                  localStorage.setItem('iposense_refresh_token', '${refreshToken}');
+                  localStorage.setItem('iposense_user', JSON.stringify(${userPayload}));
+                } catch (storageErr) {
+                  console.warn('OAuth localStorage save failed:', storageErr);
+                }
+
+                setTimeout(() => window.close(), 500);
               } else {
                 window.location.href = '/';
               }
