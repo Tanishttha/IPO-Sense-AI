@@ -2776,7 +2776,6 @@ app.get("/api/ipos", async (req, res) => {
         companyCode: item.companyCode || null,
         searchId: item.searchId || null,
         isSme: item.isSme || false,
-        logoUrl: item.logoUrl || "",
         bidStartTimestamp: item.bidStartTimestamp || null,
         bidEndTimestamp: item.bidEndTimestamp || null,
         isPreApply: item.isPreApply || false
