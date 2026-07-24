@@ -220,6 +220,9 @@ export default function OnboardingTour({ activeTab, setActiveTab, onTourClose }:
 
   if (!isOpen) return null;
 
+  // Responsive calculation for card positioning
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  
   return (
     <>
       {/* Absolute high-contrast SVG overlay with highlighted cutout */}
@@ -228,7 +231,7 @@ export default function OnboardingTour({ activeTab, setActiveTab, onTourClose }:
         
         {coords && (
           <div 
-            className="absolute border-2 border-primary rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none transition-all duration-300 animate-pulse"
+            className="absolute border-2 border-primary rounded-xl sm:rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none transition-all duration-300 animate-pulse"
             style={{
               top: `${coords.top - 6}px`,
               left: `${coords.left - 6}px`,
@@ -241,9 +244,9 @@ export default function OnboardingTour({ activeTab, setActiveTab, onTourClose }:
 
       {/* Floating Interactive Guide Card */}
       <div 
-        className="fixed z-50 p-5 bg-card border border-primary/30 rounded-2xl shadow-2xl max-w-sm w-[92%] animate-fadeIn text-xs text-foreground"
+        className="fixed z-50 p-4 sm:p-5 bg-card border border-primary/30 rounded-2xl shadow-2xl max-w-[340px] xs:max-w-sm sm:max-w-sm w-[92%] animate-fadeIn text-xs text-foreground"
         style={
-          currentStep.position === "center" || !coords
+          currentStep.position === "center" || !coords || isMobile
             ? {
                 top: "50%",
                 left: "50%",
@@ -251,16 +254,16 @@ export default function OnboardingTour({ activeTab, setActiveTab, onTourClose }:
                 position: "fixed",
               }
             : {
-                top: `${Math.min(window.innerHeight - 300, Math.max(20, coords.top + coords.height + 15))}px`,
-                left: `${Math.min(window.innerWidth - 400, Math.max(16, coords.left + (coords.width / 2) - 180))}px`,
+                top: `${Math.min(window.innerHeight - 280, Math.max(20, coords.top + coords.height + 15))}px`,
+                left: `${Math.min(window.innerWidth - 360, Math.max(16, coords.left + (coords.width / 2) - 170))}px`,
                 position: "absolute",
               }
         }
       >
-        <div className="flex justify-between items-start mb-3 pb-2 border-b border-border">
+        <div className="flex justify-between items-center mb-2.5 sm:mb-3 pb-2 border-b border-border">
           <div className="flex items-center space-x-1.5 text-primary">
-            <Sparkles className="h-4 w-4 animate-pulse text-primary" />
-            <span className="font-mono font-bold tracking-wider uppercase text-[10px]">AI Tour Guide</span>
+            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-pulse text-primary shrink-0" />
+            <span className="font-mono font-bold tracking-wider uppercase text-[9px] sm:text-[10px]">AI Tour Guide</span>
           </div>
           <button 
             onClick={handleSkip}
@@ -271,29 +274,29 @@ export default function OnboardingTour({ activeTab, setActiveTab, onTourClose }:
           </button>
         </div>
 
-        <div className="space-y-2">
-          <h4 className="text-sm font-bold text-foreground">{currentStep.title}</h4>
-          <p className="text-muted-foreground leading-relaxed text-[11px]">{currentStep.description}</p>
+        <div className="space-y-1.5 sm:space-y-2">
+          <h4 className="text-xs sm:text-sm font-bold text-foreground">{currentStep.title}</h4>
+          <p className="text-muted-foreground leading-relaxed text-[10px] sm:text-[11px]">{currentStep.description}</p>
         </div>
 
-        {/* Progress Dots */}
-        <div className="flex items-center justify-between mt-5 pt-3 border-t border-border">
+        {/* Progress Dots & Buttons */}
+        <div className="flex items-center justify-between mt-4 sm:mt-5 pt-2.5 sm:pt-3 border-t border-border">
           <div className="flex space-x-1">
             {steps.map((_, idx) => (
               <span 
                 key={idx}
                 className={`h-1.5 rounded-full transition-all duration-200 ${
-                  idx === currentStepIdx ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"
+                  idx === currentStepIdx ? "w-3.5 sm:w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"
                 }`}
               />
             ))}
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
             {currentStepIdx > 0 && (
               <button
                 onClick={handlePrev}
-                className="p-1.5 rounded-xl border border-border hover:bg-muted hover:text-foreground transition-all cursor-pointer text-muted-foreground flex items-center justify-center"
+                className="p-1 sm:p-1.5 rounded-xl border border-border hover:bg-muted hover:text-foreground transition-all cursor-pointer text-muted-foreground flex items-center justify-center"
                 title="Back"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -302,10 +305,10 @@ export default function OnboardingTour({ activeTab, setActiveTab, onTourClose }:
 
             <button
               onClick={handleNext}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 py-1.5 rounded-xl transition-all flex items-center space-x-1 cursor-pointer shadow-md shadow-primary/10 text-[11px]"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-3 sm:px-4 py-1.5 rounded-xl transition-all flex items-center space-x-1 cursor-pointer shadow-md shadow-primary/10 text-[10px] sm:text-[11px]"
             >
               <span>{currentStepIdx === steps.length - 1 ? "Finish" : "Next"}</span>
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3 w-3 shrink-0" />
             </button>
           </div>
         </div>
