@@ -23,7 +23,7 @@ export class SecretsManager {
   }
 
   public get(key: string): string {
-    return this.secrets.get(key) || "";
+    return this.secrets.get(key) || process.env[key] || "";
   }
 
   public set(key: string, value: string): void {
