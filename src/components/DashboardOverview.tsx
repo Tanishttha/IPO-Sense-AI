@@ -116,10 +116,10 @@ export default function DashboardOverview({
             <TrendingUp className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <h3 className="text-lg sm:text-xl font-extrabold text-foreground">₹{(portfolioCurrentValue ?? 0).toLocaleString()}</h3>
+            <h3 className="text-lg sm:text-xl font-extrabold text-foreground">₹{(portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioValue).toLocaleString()}</h3>
             <span className="text-[10px] text-emerald-500 font-medium flex items-center mt-0.5">
               <ArrowUpRight className="h-3 w-3 mr-0.5 shrink-0" />
-              +₹32,450 (+24.1%) gains
+              +₹{Math.max(0, portfolioCurrentValue > 0 ? portfolioCurrentValue - portfolioValue : 0).toLocaleString()} ({portfolioValue > 0 ? (((portfolioCurrentValue > 0 ? portfolioCurrentValue : portfolioValue) - portfolioValue) / portfolioValue * 100).toFixed(1) : "0.0"}%) gains
             </span>
           </div>
         </div>
