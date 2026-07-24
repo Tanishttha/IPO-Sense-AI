@@ -45,6 +45,17 @@ pool
   .then((res) => {
     console.log("✅ PostgreSQL Connected");
     console.log(res.rows);
+    // Ensure legacy user_pans table exists for PAN persistence (migration helper)
+    pool.query(`
+      CREATE TABLE IF NOT EXISTS user_pans (
+        id serial PRIMARY KEY,
+        user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        pan_encrypted text NOT NULL,
+        created_at timestamp DEFAULT now()
+      )
+    `).catch((err) => {
+      console.warn('Could not ensure user_pans table exists:', err.message || err);
+    });
   })
   .catch((err) => {
     console.error("❌ PostgreSQL Connection Error");

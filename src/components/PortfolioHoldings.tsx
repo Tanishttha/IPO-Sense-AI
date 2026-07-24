@@ -25,7 +25,6 @@ import {
   YAxis 
 } from "recharts";
 import { PortfolioHolding, IPO } from "../types";
-import AiRiskMonitor from "./AiRiskMonitor";
 
 interface PortfolioProps {
   holdings: PortfolioHolding[];
@@ -700,16 +699,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* AI Risk Monitor Section */}
-      <div className="pt-6 border-t border-border/80">
-        <AiRiskMonitor 
-          holdings={displayHoldings}
-          watchlist={watchlist}
-          ipos={ipos}
-          onToggleWatchlist={onToggleWatchlist}
-          onRebalance={onRebalance}
-        />
-      </div>
     </div>
   );
 }

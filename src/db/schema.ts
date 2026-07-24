@@ -40,6 +40,31 @@ export const bids = pgTable("bids", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Allotment Check History Table
+export const allotmentChecks = pgTable("allotment_checks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  provider: text("provider").notNull(), // KFINTECH, MUFG
+  ipoId: text("ipo_id").notNull(),
+  ipoName: text("ipo_name"),
+  panEncrypted: text("pan_encrypted").notNull(),
+  status: text("status"),
+  response: text("response"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// User PAN Storage Table
+export const userPans = pgTable("user_pans", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  panEncrypted: text("pan_encrypted").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Notifications Table
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -80,6 +105,7 @@ export const userSettings = pgTable("user_settings", {
 export const usersRelations = relations(users, ({ many, one }) => ({
   watchlist: many(watchlist),
   bids: many(bids),
+  allotmentChecks: many(allotmentChecks),
   notifications: many(notifications),
   portfolioHistory: many(portfolioHistory),
   portfolioHoldings: many(portfolioHoldings),
@@ -229,3 +255,10 @@ export const apiUsageLogsRelations = relations(apiUsageLogs, ({ one }) => ({
   }),
 }));
 
+
+export const allotmentChecksRelations = relations(allotmentChecks, ({ one }) => ({
+  user: one(users, {
+    fields: [allotmentChecks.userId],
+    references: [users.id],
+  }),
+}));

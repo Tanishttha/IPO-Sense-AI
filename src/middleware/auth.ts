@@ -26,6 +26,7 @@ export const requireAuth = async (
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
+  console.log("[AUTH DEBUG] Authorization header present:", !!authHeader);
   const isGuestFallback = !authHeader || !authHeader.startsWith("Bearer ") || authHeader.split("Bearer ")[1] === "null" || authHeader.split("Bearer ")[1] === "undefined" || authHeader.split("Bearer ")[1].trim() === "";
 
   if (isGuestFallback) {
@@ -90,6 +91,7 @@ export const requireAuth = async (
   // Try custom JWT verification first
   try {
     const customDecoded = jwt.verify(token, getJwtSecret()) as { uid: string; email: string; role?: string };
+    console.log("[AUTH DEBUG] JWT decoded uid:", customDecoded.uid);
     if (customDecoded && customDecoded.uid) {
       req.user = {
         uid: customDecoded.uid,
@@ -135,6 +137,7 @@ export const requireAuth = async (
       }
 
       if (dbUserRecord) {
+        console.log("[AUTH DEBUG] DB user found:", dbUserRecord.id, dbUserRecord.email);
         req.dbUser = {
           id: dbUserRecord.id,
           uid: dbUserRecord.uid,
@@ -220,6 +223,7 @@ export const requireAuth = async (
     }
 
     if (dbUserRecord) {
+      console.log("[AUTH DEBUG] Firebase DB user found:", dbUserRecord.id, dbUserRecord.email);
       req.dbUser = {
         id: dbUserRecord.id,
         uid: dbUserRecord.uid,

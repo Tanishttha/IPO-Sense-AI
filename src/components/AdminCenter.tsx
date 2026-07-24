@@ -374,66 +374,66 @@ export default function AdminCenter({
   };
 
   return (
-    <div className="space-y-6" id="admin-center-root">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-4 py-2" id="admin-center-root">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-red-500/10 via-rose-500/5 to-transparent border border-red-500/20 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-red-500/10 via-rose-500/5 to-transparent border border-red-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/25 text-[10px] font-semibold uppercase tracking-wider">
             <ShieldCheck className="h-3 w-3 mr-1" /> Admin Panel Active
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Platform Control Room</h2>
-          <p className="text-sm text-gray-400">Trigger background tasks, audit rate limit variables, inspect audit logs and system API telemetry directly.</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Platform Control Room</h2>
+          <p className="text-xs sm:text-sm text-gray-400">Trigger background tasks, audit rate limit variables, inspect audit logs and system API telemetry directly.</p>
         </div>
       </div>
 
       {/* Info Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-          <div className="p-2.5 bg-indigo-500/15 border border-indigo-500/20 rounded-xl text-indigo-400">
-            <Cpu className="h-5 w-5" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex items-center space-x-3 shadow-sm">
+          <div className="p-2 sm:p-2.5 bg-indigo-500/15 border border-indigo-500/20 rounded-xl text-indigo-400 shrink-0">
+            <Cpu className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <div className="text-[10px] uppercase font-mono text-gray-500">Service Eng.</div>
-            <div className="text-sm font-bold text-white">Express + Vite</div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-          <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/20 rounded-xl text-emerald-400">
-            <Database className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase font-mono text-gray-500">Postgres Pool</div>
-            <div className="text-sm font-bold text-white">10 Active (Pool)</div>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] uppercase font-mono text-gray-500 truncate">Service Eng.</div>
+            <div className="text-xs sm:text-sm font-bold text-white truncate">Express + Vite</div>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-          <div className="p-2.5 bg-violet-500/15 border border-violet-500/20 rounded-xl text-violet-400">
-            <Radio className="h-5 w-5 animate-pulse" />
+        <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex items-center space-x-3 shadow-sm">
+          <div className="p-2 sm:p-2.5 bg-emerald-500/15 border border-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
+            <Database className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <div className="text-[10px] uppercase font-mono text-gray-500">Event Stream</div>
-            <div className="text-sm font-bold text-white">SSE Active</div>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] uppercase font-mono text-gray-500 truncate">Postgres Pool</div>
+            <div className="text-xs sm:text-sm font-bold text-white truncate">10 Active (Pool)</div>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-4 flex items-center space-x-3 shadow-sm">
-          <div className="p-2.5 bg-rose-500/15 border border-rose-500/20 rounded-xl text-rose-400">
-            <Activity className="h-5 w-5" />
+        <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex items-center space-x-3 shadow-sm">
+          <div className="p-2 sm:p-2.5 bg-violet-500/15 border border-violet-500/20 rounded-xl text-violet-400 shrink-0">
+            <Radio className="h-4 w-4 sm:h-5 sm:w-5 animate-pulse" />
           </div>
-          <div>
-            <div className="text-[10px] uppercase font-mono text-gray-500">Audit Status</div>
-            <div className="text-sm font-bold text-white">12s Beats Active</div>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] uppercase font-mono text-gray-500 truncate">Event Stream</div>
+            <div className="text-xs sm:text-sm font-bold text-white truncate">SSE Active</div>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-3 sm:p-4 flex items-center space-x-3 shadow-sm">
+          <div className="p-2 sm:p-2.5 bg-rose-500/15 border border-rose-500/20 rounded-xl text-rose-400 shrink-0">
+            <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[9px] sm:text-[10px] uppercase font-mono text-gray-500 truncate">Audit Status</div>
+            <div className="text-xs sm:text-sm font-bold text-white truncate">12s Beats Active</div>
           </div>
         </div>
       </div>
 
       {/* Sub Tab Navigation */}
-      <div className="flex border-b border-border space-x-1 overflow-x-auto pb-px">
+      <div className="flex border-b border-border space-x-1 sm:space-x-2 overflow-x-auto pb-px no-scrollbar">
         <button
           onClick={() => setSubTab("users")}
-          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             subTab === "users" 
               ? "border-primary text-primary" 
               : "border-transparent text-gray-400 hover:text-white"
@@ -447,7 +447,7 @@ export default function AdminCenter({
 
         <button
           onClick={() => setSubTab("audits")}
-          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             subTab === "audits" 
               ? "border-primary text-primary" 
               : "border-transparent text-gray-400 hover:text-white"
@@ -461,7 +461,7 @@ export default function AdminCenter({
 
         <button
           onClick={() => setSubTab("api_logs")}
-          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             subTab === "api_logs" 
               ? "border-primary text-primary" 
               : "border-transparent text-gray-400 hover:text-white"
@@ -475,7 +475,7 @@ export default function AdminCenter({
 
         <button
           onClick={() => setSubTab("market_data")}
-          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             subTab === "market_data" 
               ? "border-primary text-primary" 
               : "border-transparent text-gray-400 hover:text-white"
@@ -489,7 +489,7 @@ export default function AdminCenter({
 
         <button
           onClick={() => setSubTab("security")}
-          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 text-xs font-bold transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0 ${
             subTab === "security" 
               ? "border-primary text-primary" 
               : "border-transparent text-gray-400 hover:text-white"
@@ -504,33 +504,33 @@ export default function AdminCenter({
 
       {/* Live Message Center */}
       {message && (
-        <div className={`p-4 rounded-xl border flex items-start space-x-2 text-sm ${
+        <div className={`p-3 sm:p-4 rounded-xl border flex items-start space-x-2 text-xs sm:text-sm ${
           message.type === "success" 
             ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
             : "bg-destructive/10 border-destructive/20 text-destructive-foreground"
         }`}>
-          {message.type === "success" ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
-          <span>{message.text}</span>
+          {message.type === "success" ? <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" /> : <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />}
+          <span className="break-words">{message.text}</span>
         </div>
       )}
 
       {/* Main Grid: Rendered view and system tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Left/Middle Col: Active Tab View */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           
           {subTab === "users" && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
-                  <Users className="h-4.5 w-4.5 text-primary" />
-                  <h3 className="text-sm font-bold text-gray-200">Registered Users Register (Postgres)</h3>
+                  <Users className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-primary shrink-0" />
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-200">Registered Users Register (Postgres)</h3>
                 </div>
                 <button 
                   onClick={fetchUsers}
                   disabled={loading}
-                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
                   title="Refresh register list"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -542,8 +542,8 @@ export default function AdminCenter({
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                  <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                     <thead>
                       <tr className="border-b border-border pb-2 text-gray-500">
                         <th className="py-2.5 font-semibold">ID</th>
@@ -556,9 +556,9 @@ export default function AdminCenter({
                       {users.map((usr) => (
                         <tr key={usr.id} className="border-b border-border hover:bg-muted/30 transition-all">
                           <td className="py-3 font-mono text-gray-400">#{usr.id}</td>
-                          <td className="py-3 text-white truncate max-w-[150px]">{usr.email}</td>
+                          <td className="py-3 text-white truncate max-w-[120px] sm:max-w-[150px]">{usr.email}</td>
                           <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider whitespace-nowrap ${
                               usr.role === "ADMINISTRATOR" 
                                 ? "bg-red-500/15 text-red-400 border border-red-500/10" 
                                 : usr.role === "RESEARCH_ANALYST"
@@ -589,16 +589,16 @@ export default function AdminCenter({
           )}
 
           {subTab === "audits" && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
-                  <FileText className="h-4.5 w-4.5 text-rose-400" />
-                  <h3 className="text-sm font-bold text-gray-200">System Security Audit Trail (Postgres)</h3>
+                  <FileText className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-rose-400 shrink-0" />
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-200">System Security Audit Trail (Postgres)</h3>
                 </div>
                 <button 
                   onClick={fetchAudits}
                   disabled={loadingAudits}
-                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loadingAudits ? "animate-spin" : ""}`} />
                 </button>
@@ -613,8 +613,8 @@ export default function AdminCenter({
                   No system audits logged in PostgreSQL database yet.
                 </div>
               ) : (
-                <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 max-h-[400px] overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs min-w-[550px]">
                     <thead>
                       <tr className="border-b border-border pb-2 text-gray-500 sticky top-0 bg-card">
                         <th className="py-2.5 font-semibold">Timestamp</th>
@@ -627,19 +627,19 @@ export default function AdminCenter({
                     <tbody>
                       {auditLogs.map((log) => (
                         <tr key={log.id} className="border-b border-border/50 hover:bg-muted/20 transition-all">
-                          <td className="py-3 font-mono text-[10px] text-gray-500">
+                          <td className="py-3 font-mono text-[10px] text-gray-500 whitespace-nowrap">
                             {new Date(log.createdAt).toLocaleTimeString()}
                           </td>
-                          <td className="py-3 font-mono text-gray-400">
+                          <td className="py-3 font-mono text-gray-400 whitespace-nowrap">
                             {log.userId ? `#${log.userId}` : "SYSTEM"}
                           </td>
                           <td className="py-3">
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/10 font-mono text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/10 font-mono text-[10px] font-bold whitespace-nowrap">
                               {log.action}
                             </span>
                           </td>
-                          <td className="py-3 font-mono text-gray-500">{log.ipAddress || "127.0.0.1"}</td>
-                          <td className="py-3 text-white truncate max-w-[200px]" title={log.details}>
+                          <td className="py-3 font-mono text-gray-500 whitespace-nowrap">{log.ipAddress || "127.0.0.1"}</td>
+                          <td className="py-3 text-white truncate max-w-[150px] sm:max-w-[200px]" title={log.details}>
                             {log.details}
                           </td>
                         </tr>
@@ -652,16 +652,16 @@ export default function AdminCenter({
           )}
 
           {subTab === "api_logs" && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
-                  <Activity className="h-4.5 w-4.5 text-indigo-400" />
-                  <h3 className="text-sm font-bold text-gray-200">API Usage Telemetry & Groq Metrics</h3>
+                  <Activity className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-indigo-400 shrink-0" />
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-200">API Usage Telemetry & Groq Metrics</h3>
                 </div>
                 <button 
                   onClick={fetchApiLogs}
                   disabled={loadingApiLogs}
-                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loadingApiLogs ? "animate-spin" : ""}`} />
                 </button>
@@ -680,25 +680,25 @@ export default function AdminCenter({
                   {/* Summary Bar */}
                   <div className="grid grid-cols-3 gap-2 p-3 bg-[#0b0f19] rounded-xl border border-border text-center">
                     <div>
-                      <div className="text-[9px] uppercase font-mono text-gray-500">Total API Cycles</div>
-                      <div className="text-sm font-bold text-white">{apiLogs.length}</div>
+                      <div className="text-[8px] sm:text-[9px] uppercase font-mono text-gray-500">Total API Cycles</div>
+                      <div className="text-xs sm:text-sm font-bold text-white">{apiLogs.length}</div>
                     </div>
                     <div>
-                      <div className="text-[9px] uppercase font-mono text-gray-500">Avg Latency</div>
-                      <div className="text-sm font-bold text-emerald-400">
+                      <div className="text-[8px] sm:text-[9px] uppercase font-mono text-gray-500">Avg Latency</div>
+                      <div className="text-xs sm:text-sm font-bold text-emerald-400">
                         {Math.round(apiLogs.reduce((acc, curr) => acc + (curr.responseTimeMs || 0), 0) / apiLogs.length)} ms
                       </div>
                     </div>
                     <div>
-                      <div className="text-[9px] uppercase font-mono text-gray-500">Total Tokens</div>
-                      <div className="text-sm font-bold text-indigo-400">
+                      <div className="text-[8px] sm:text-[9px] uppercase font-mono text-gray-500">Total Tokens</div>
+                      <div className="text-xs sm:text-sm font-bold text-indigo-400">
                         {apiLogs.reduce((acc, curr) => acc + (curr.tokensUsed || 0), 0)}
                       </div>
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                  <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-left border-collapse text-xs min-w-[450px]">
                       <thead>
                         <tr className="border-b border-border pb-2 text-gray-500 sticky top-0 bg-card">
                           <th className="py-2.5 font-semibold">Endpoint</th>
@@ -711,7 +711,7 @@ export default function AdminCenter({
                       <tbody>
                         {apiLogs.map((log) => (
                           <tr key={log.id} className="border-b border-border/50 hover:bg-muted/20 transition-all">
-                            <td className="py-3 font-mono text-white text-[11px] truncate max-w-[120px]" title={log.endpoint}>
+                            <td className="py-3 font-mono text-white text-[11px] truncate max-w-[100px] sm:max-w-[120px]" title={log.endpoint}>
                               {log.endpoint}
                             </td>
                             <td className="py-3 font-bold text-gray-300">{log.provider}</td>
@@ -739,16 +739,16 @@ export default function AdminCenter({
           )}
 
           {subTab === "market_data" && (
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4.5 w-4.5 text-emerald-400" />
-                  <h3 className="text-sm font-bold text-gray-200">Global Indices & GMP Tables (Postgres)</h3>
+                  <TrendingUp className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-emerald-400 shrink-0" />
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-200">Global Indices & GMP Tables (Postgres)</h3>
                 </div>
                 <button 
                   onClick={fetchMarket}
                   disabled={loadingMarket}
-                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loadingMarket ? "animate-spin" : ""}`} />
                 </button>
@@ -759,8 +759,8 @@ export default function AdminCenter({
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                  <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                     <thead>
                       <tr className="border-b border-border pb-2 text-gray-500">
                         <th className="py-2.5 font-semibold">Index Key</th>
@@ -780,7 +780,7 @@ export default function AdminCenter({
                                 type="text"
                                 value={editMarketValue}
                                 onChange={(e) => setEditMarketValue(e.target.value)}
-                                className="bg-background border border-border rounded-lg text-xs font-semibold px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary text-white w-24"
+                                className="bg-background border border-border rounded-lg text-xs font-semibold px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary text-white w-20 sm:w-24"
                               />
                             ) : (
                               <span className="text-white font-mono font-bold">{rec.dataValue}</span>
@@ -792,7 +792,7 @@ export default function AdminCenter({
                                 type="text"
                                 value={editMarketChange}
                                 onChange={(e) => setEditMarketChange(e.target.value)}
-                                className="bg-background border border-border rounded-lg text-xs font-semibold px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary text-white w-20"
+                                className="bg-background border border-border rounded-lg text-xs font-semibold px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary text-white w-16 sm:w-20"
                               />
                             ) : (
                               <span className={`font-mono font-semibold ${
@@ -806,7 +806,7 @@ export default function AdminCenter({
                               </span>
                             )}
                           </td>
-                          <td className="py-3 text-gray-500 text-[10px] font-mono">
+                          <td className="py-3 text-gray-500 text-[10px] font-mono whitespace-nowrap">
                             {new Date(rec.updatedAt).toLocaleTimeString()}
                           </td>
                           <td className="py-3 text-right">
@@ -850,56 +850,56 @@ export default function AdminCenter({
           )}
 
           {subTab === "security" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Top Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-card border border-border rounded-2xl p-4 flex items-center space-x-3.5">
-                  <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
-                    <ShieldCheck className="h-6 w-6" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-3.5 sm:p-4 flex items-center space-x-3.5">
+                  <div className="p-2.5 sm:p-3 bg-blue-500/10 rounded-xl text-blue-400 shrink-0">
+                    <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">CSRF Defense</p>
-                    <p className="text-lg font-extrabold text-white">Active (Double-Submit)</p>
-                    <p className="text-xs text-emerald-400 font-medium">Verified Custom Header Engine</p>
-                  </div>
-                </div>
-
-                <div className="bg-card border border-border rounded-2xl p-4 flex items-center space-x-3.5">
-                  <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400">
-                    <RefreshCw className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Refresh Token Rotation</p>
-                    <p className="text-lg font-extrabold text-white">Rotated & Blacklisted</p>
-                    <p className="text-xs text-gray-400 font-medium">{(securityConfig && securityConfig.blacklistedTokensCount) || 0} expired keys invalidated</p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500 font-bold truncate">CSRF Defense</p>
+                    <p className="text-base sm:text-lg font-extrabold text-white truncate">Active (Double-Submit)</p>
+                    <p className="text-[10px] sm:text-xs text-emerald-400 font-medium truncate">Verified Custom Header Engine</p>
                   </div>
                 </div>
 
-                <div className="bg-card border border-border rounded-2xl p-4 flex items-center space-x-3.5">
-                  <div className="p-3 bg-purple-500/10 rounded-xl text-purple-400">
-                    <Activity className="h-6 w-6" />
+                <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-3.5 sm:p-4 flex items-center space-x-3.5">
+                  <div className="p-2.5 sm:p-3 bg-amber-500/10 rounded-xl text-amber-400 shrink-0">
+                    <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Active CSRF Sessions</p>
-                    <p className="text-lg font-extrabold text-white">{(securityConfig && securityConfig.activeCsrfTokensCount) || 0} Handshakes</p>
-                    <p className="text-xs text-purple-400 font-medium">Valid session headers cache</p>
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500 font-bold truncate">Refresh Token Rotation</p>
+                    <p className="text-base sm:text-lg font-extrabold text-white truncate">Rotated & Blacklisted</p>
+                    <p className="text-[10px] sm:text-xs text-gray-400 font-medium truncate">{(securityConfig && securityConfig.blacklistedTokensCount) || 0} expired keys invalidated</p>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-3.5 sm:p-4 flex items-center space-x-3.5">
+                  <div className="p-2.5 sm:p-3 bg-purple-500/10 rounded-xl text-purple-400 shrink-0">
+                    <Activity className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500 font-bold truncate">Active CSRF Sessions</p>
+                    <p className="text-base sm:text-lg font-extrabold text-white truncate">{(securityConfig && securityConfig.activeCsrfTokensCount) || 0} Handshakes</p>
+                    <p className="text-[10px] sm:text-xs text-purple-400 font-medium truncate">Valid session headers cache</p>
                   </div>
                 </div>
               </div>
 
               {/* Secrets Manager & Key Rotation */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
                   <div className="flex items-center space-x-2">
-                    <Settings className="h-4.5 w-4.5 text-primary" />
-                    <h3 className="text-sm font-bold text-gray-200">Dynamic Secrets Manager & Key Rotation</h3>
+                    <Settings className="h-4.5 w-4.5 text-primary shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-200">Dynamic Secrets Manager & Key Rotation</h3>
                   </div>
 
                   <p className="text-xs text-gray-400 leading-relaxed">
                     Credentials and encryption keys are retrieved dynamically from memory. Rotating sensitive keys immediately updates active systems without requiring server reboots.
                   </p>
 
-                  <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-4">
+                  <div className="p-3 sm:p-4 bg-muted/40 border border-border rounded-xl space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5">Select Key to Rotate</label>
@@ -931,7 +931,7 @@ export default function AdminCenter({
                       <button
                         onClick={handleRotateSecret}
                         disabled={loadingSecurity || !selectedSecretKey || !newSecretValue}
-                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center space-x-1.5"
+                        className="w-full sm:w-auto px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center space-x-1.5"
                       >
                         <RefreshCw className={`h-3 w-3 ${loadingSecurity ? "animate-spin" : ""}`} />
                         <span>Rotate Security Key</span>
@@ -961,13 +961,13 @@ export default function AdminCenter({
                 </div>
 
                 {/* Emergency Session Revocation & CSRF */}
-                <div className="bg-card border border-border rounded-2xl p-5 space-y-5 shadow-sm">
+                <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-5 shadow-sm">
                   <div className="flex items-center space-x-2">
-                    <AlertCircle className="h-4.5 w-4.5 text-destructive" />
-                    <h3 className="text-sm font-bold text-gray-200">Emergency Global Session Revocation</h3>
+                    <AlertCircle className="h-4.5 w-4.5 text-destructive shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-200">Emergency Global Session Revocation</h3>
                   </div>
 
-                  <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl space-y-3">
+                  <div className="p-3 sm:p-4 bg-destructive/5 border border-destructive/20 rounded-xl space-y-3">
                     <p className="text-xs text-destructive-foreground/90 font-medium">
                       CRITICAL: If you suspect a user account breach, dynamic token key compromise, or malicious session takeover:
                     </p>
@@ -980,7 +980,7 @@ export default function AdminCenter({
                         disabled={loadingSecurity}
                         className="w-full py-2.5 bg-destructive hover:bg-destructive/95 text-destructive-foreground text-xs font-extrabold rounded-lg transition-all cursor-pointer flex items-center justify-center space-x-2 shadow-sm shadow-destructive/10"
                       >
-                        <AlertCircle className="h-4 w-4" />
+                        <AlertCircle className="h-4 w-4 shrink-0" />
                         <span>Execute Emergency Session Expulsion</span>
                       </button>
                     </div>
@@ -989,14 +989,14 @@ export default function AdminCenter({
                   {/* Rate Limiting Configuration Parameters */}
                   <div className="space-y-3 pt-1">
                     <div className="flex items-center space-x-2">
-                      <Terminal className="h-4.5 w-4.5 text-purple-400" />
-                      <h3 className="text-sm font-bold text-gray-200">Rate Limiting System Specs</h3>
+                      <Terminal className="h-4.5 w-4.5 text-purple-400 shrink-0" />
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-200">Rate Limiting System Specs</h3>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                       <div className="bg-muted/40 p-3 rounded-xl border border-border/80">
                         <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Sliding Window</p>
-                        <p className="text-sm font-black text-white mt-0.5">
+                        <p className="text-xs sm:text-sm font-black text-white mt-0.5">
                           {securityConfig ? securityConfig.rateLimitWindowMs / 1000 / 60 : 15} Min
                         </p>
                         <span className="text-[9px] text-gray-400 font-mono">
@@ -1006,7 +1006,7 @@ export default function AdminCenter({
 
                       <div className="bg-muted/40 p-3 rounded-xl border border-border/80">
                         <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Standard Limit</p>
-                        <p className="text-sm font-black text-white mt-0.5">
+                        <p className="text-xs sm:text-sm font-black text-white mt-0.5">
                           {securityConfig && securityConfig.rateLimitMaxRequests >= 1000000000000 ? "Unlimited" : securityConfig?.rateLimitMaxRequests || "Unlimited"} Req
                         </p>
                         <span className="text-[9px] text-gray-400">Standard API routes</span>
@@ -1014,7 +1014,7 @@ export default function AdminCenter({
 
                       <div className="bg-muted/40 p-3 rounded-xl border border-border/80">
                         <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Strict Limit</p>
-                        <p className="text-sm font-black text-white mt-0.5">
+                        <p className="text-xs sm:text-sm font-black text-white mt-0.5">
                           {securityConfig && securityConfig.rateLimitStrictMaxRequests >= 1000000000000 ? "Unlimited" : securityConfig?.rateLimitStrictMaxRequests || "Unlimited"} Req
                         </p>
                         <span className="text-[9px] text-gray-400">Auth, admin, AI routes</span>
@@ -1025,16 +1025,16 @@ export default function AdminCenter({
               </div>
 
               {/* Rate Limiting Logs Dashboard */}
-              <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
+              <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-2">
-                    <Activity className="h-4.5 w-4.5 text-purple-400" />
-                    <h3 className="text-sm font-bold text-gray-200">Real-Time IP Traffic & Rate Limiting Blocks</h3>
+                    <Activity className="h-4.5 w-4.5 text-purple-400 shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-200">Real-Time IP Traffic & Rate Limiting Blocks</h3>
                   </div>
                   <button
                     onClick={fetchSecurityData}
                     disabled={loadingSecurity}
-                    className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingSecurity ? "animate-spin" : ""}`} />
                   </button>
@@ -1049,8 +1049,8 @@ export default function AdminCenter({
                     <p className="text-xs text-gray-500">No recent rate limiter traffic logs captured.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
+                  <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                    <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                       <thead>
                         <tr className="border-b border-border pb-2 text-gray-500">
                           <th className="py-2.5 font-semibold">Requester IP</th>
@@ -1063,7 +1063,7 @@ export default function AdminCenter({
                       <tbody>
                         {rateLimitLogs.map((log) => (
                           <tr key={log.id} className="border-b border-border/40 hover:bg-muted/10 transition-all font-mono">
-                            <td className="py-2.5 text-gray-300 font-semibold">{log.ip}</td>
+                            <td className="py-2.5 text-gray-300 font-semibold whitespace-nowrap">{log.ip}</td>
                             <td className="py-2.5">
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                 log.method === "GET" ? "bg-blue-500/10 text-blue-400" :
@@ -1073,19 +1073,19 @@ export default function AdminCenter({
                                 {log.method}
                               </span>
                             </td>
-                            <td className="py-2.5 text-gray-400 max-w-xs truncate" title={log.path}>
+                            <td className="py-2.5 text-gray-400 max-w-[120px] sm:max-w-xs truncate" title={log.path}>
                               {log.path}
                             </td>
-                            <td className="py-2.5 text-gray-500">
+                            <td className="py-2.5 text-gray-500 whitespace-nowrap">
                               {new Date(log.timestamp).toLocaleTimeString()}
                             </td>
                             <td className="py-2.5 text-right font-sans">
                               {log.status === "allowed" ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/10 whitespace-nowrap">
                                   ● Allowed
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-destructive/10 text-destructive-foreground border border-destructive/20 animate-pulse">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-destructive/10 text-destructive-foreground border border-destructive/20 animate-pulse whitespace-nowrap">
                                   ● Blocked
                                 </span>
                               )}
@@ -1103,11 +1103,11 @@ export default function AdminCenter({
         </div>
 
         {/* Right Col: Tasks & Controls */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           
           {/* Action Hub */}
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-200">Trigger Audit Task Routines</h3>
+          <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+            <h3 className="text-xs sm:text-sm font-bold text-gray-200">Trigger Audit Task Routines</h3>
             <div className="space-y-2.5">
               
               {/* Sync Trigger */}
@@ -1116,7 +1116,7 @@ export default function AdminCenter({
                 disabled={syncing}
                 className="w-full py-2 px-3 bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
               >
-                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 shrink-0" />}
                 <span>Trigger NSE Allotment Audit</span>
               </button>
 
@@ -1129,7 +1129,7 @@ export default function AdminCenter({
                 }}
                 className="w-full py-2 px-3 bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all border border-border cursor-pointer"
               >
-                <Settings className="h-4 w-4 text-amber-500" />
+                <Settings className="h-4 w-4 text-amber-500 shrink-0" />
                 <span>{simulateRateLimit ? "Disable Rate Limit Simulation" : "Enable Rate Limit Simulation (429)"}</span>
               </button>
 
@@ -1138,7 +1138,7 @@ export default function AdminCenter({
                 onClick={() => handleTestTrigger("gmp-surge")}
                 className="w-full py-2 px-3 bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all border border-border cursor-pointer"
               >
-                <Bell className="h-4 w-4 text-violet-400" />
+                <Bell className="h-4 w-4 text-violet-400 shrink-0" />
                 <span>Simulate GMP Surge Alert</span>
               </button>
 
@@ -1146,7 +1146,7 @@ export default function AdminCenter({
                 onClick={() => handleTestTrigger("allot-status")}
                 className="w-full py-2 px-3 bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all border border-border cursor-pointer"
               >
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span>Simulate Allotment Guard Check</span>
               </button>
 
@@ -1154,13 +1154,13 @@ export default function AdminCenter({
           </div>
 
           {/* System Terminal Console */}
-          <div className="bg-[#0b0f19] border border-border rounded-2xl p-4 space-y-2 shadow-sm font-mono text-[10px]">
+          <div className="bg-[#0b0f19] border border-border rounded-xl sm:rounded-2xl p-3.5 sm:p-4 space-y-2 shadow-sm font-mono text-[10px]">
             <div className="flex items-center space-x-1.5 border-b border-border/40 pb-2 mb-2 text-gray-500">
-              <Terminal className="h-3 w-3 text-red-500" />
+              <Terminal className="h-3 w-3 text-red-500 shrink-0" />
               <span className="font-bold">SYSTEM BROADCAST TERMINAL LOGS</span>
             </div>
             
-            <div className="space-y-1.5 h-[160px] overflow-y-auto pr-1 select-none">
+            <div className="space-y-1.5 h-[140px] sm:h-[160px] overflow-y-auto pr-1 select-none">
               {logs.map((log, index) => (
                 <div key={index} className="text-gray-400 truncate">
                   <span className="text-red-400">▶</span> {log}

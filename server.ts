@@ -28,6 +28,8 @@ import {
 } from "./src/db/schema.ts";
 import { requireAuth, AuthRequest } from "./src/middleware/auth.ts";
 import { eq, and } from "drizzle-orm";
+import allotmentRoutes from "./src/routes/allotment.routes.ts";
+import userPanRoutes from "./src/routes/userPan.routes.ts";
 import {
   secretsManager,
   customRateLimiter,
@@ -53,6 +55,9 @@ app.use(express.json({ limit: "50mb" }));
 app.use(securityHeaders);
 app.use(customRateLimiter);
 app.use(csrfProtection);
+
+app.use("/api", allotmentRoutes);
+app.use("/api", userPanRoutes);
 
 // AES-256-CBC Encryption Key & IV Settings
 const getAesSecret = () => secretsManager.get("AES_SECRET") || "d6f51952a2d48858e3b567ef54fa86aa";
@@ -3065,69 +3070,6 @@ app.post("/api/applications", requireAuth, validateRequest({ ipoId: "string", pa
     console.error("Submit application failed:", err);
     res.status(500).json({ error: "Failed to submit application to PostgreSQL." });
   }
-});
-
-
-// 4. Allotment Checker (Simulates check with dynamic result)
-app.post("/api/allotment-check", (req, res) => {
-  const { appNumber, pan } = req.body;
-  if (!appNumber || !pan) {
-    return res.status(400).json({ error: "Application number and PAN are required." });
-  }
-
-  db = loadDb();
-  const app = db.applications.find(
-    a => a.appNumber === appNumber && a.pan.toUpperCase() === pan.toUpperCase()
-  );
-
-  // If not tracked yet, simulate checking linkintime / kfintech directly
-  const queryPan = pan.toUpperCase();
-  // Find match in dataset to know status
-  const matchedIpo = IPOS_DATA.find(i => 
-    db.applications.some(a => a.appNumber === appNumber && a.ipoId === i.id)
-  ) || IPOS_DATA[0]; // Fallback to ACME
-
-  // Determine allotment based on subscription rates & risk score
-  const probability = matchedIpo.status === "ACTIVE" || matchedIpo.status === "UPCOMING" 
-    ? 0.0  // Not yet allotted
-    : matchedIpo.symbol === "ZETAPAY" ? 0.95 : 0.15; // ZetaPay had low subscription, easy allotment. ACME/APEX had high, tough.
-
-  const isAllotted = Math.random() < (probability || 0.3);
-
-  if (app) {
-    if (app.status === "APPLIED") {
-      if (matchedIpo.status === "ACTIVE" || matchedIpo.status === "UPCOMING") {
-        app.status = "APPLIED";
-        app.refundStatus = "Pending IPO Closure";
-      } else {
-        app.status = isAllotted ? "ALLOTTED" : "NOT_ALLOTTED";
-        app.allottedLots = isAllotted ? app.lots : 0;
-        app.refundStatus = isAllotted ? "Debited Successfully" : "Refund Processed (UPI Unblocked)";
-      }
-      saveDb(db);
-    }
-    return res.json(app);
-  }
-
-  // Simulate off-the-cuff direct query to registrar
-  const mockAllotmentResult = {
-    id: "SIM-" + Math.floor(100000 + Math.random() * 900000),
-    ipoId: matchedIpo.id,
-    ipoName: matchedIpo.name,
-    pan: queryPan,
-    appNumber,
-    broker: "Zerodha",
-    upiId: "user@okaxis",
-    category: "RETAIL",
-    applicationDate: "2026-07-10",
-    investmentAmount: 14250,
-    lots: 1,
-    status: isAllotted ? "ALLOTTED" : "NOT_ALLOTTED",
-    allottedLots: isAllotted ? 1 : 0,
-    refundStatus: isAllotted ? "Debited Successfully" : "Refund Processed (UPI Unblocked)"
-  };
-
-  res.json(mockAllotmentResult);
 });
 
 

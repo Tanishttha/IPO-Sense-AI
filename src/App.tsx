@@ -588,23 +588,6 @@ const symbols = normalizedHoldings
     }
   };
 
-  // Check allotment handler
-  const handleCheckAllotment = async (appNumber: string, pan: string) => {
-    try {
-      const res = await apiFetch("/api/allotment-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appNumber, pan })
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-
   // Total Portfolio value calculation
   const portfolioValue = portfolio.reduce((sum, h) => sum + (h.currentPrice * h.quantity), 0);
 
@@ -784,7 +767,6 @@ const symbols = normalizedHoldings
                   <AllotmentTracker 
                     applications={applications} 
                     ipos={ipos} 
-                    onCheckAllotment={handleCheckAllotment}
                     onRefreshList={fetchApplications}
                     onNseSync={handleNseSync}
                   />

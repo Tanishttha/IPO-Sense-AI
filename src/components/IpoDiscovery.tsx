@@ -1569,7 +1569,7 @@ export default function IpoDiscovery({ ipos, watchlist = [], onToggleWatchlist, 
                         </div>
                       )}
 
-                      {cons.length > 0 && (
+                     {cons.length > 0 && (
                         <div className={pros.length > 0 ? "mt-3" : undefined}>
                           <span className="text-[10px] uppercase font-mono font-bold text-rose-500">Risks:</span>
                           <ul className="list-disc pl-4 text-[10px] mt-1.5 text-foreground">
