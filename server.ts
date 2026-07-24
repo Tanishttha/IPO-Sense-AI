@@ -1607,8 +1607,10 @@ app.post("/api/auth/refresh", async (req, res) => {
 
 // 6. GOOGLE OAUTH URL
 app.get("/api/auth/google-url", (req, res) => {
-  const callbackUrl = `${req.protocol}://${req.get("host")}/auth/callback`;
-  const params = new URLSearchParams({
+const callbackUrl =
+  process.env.APP_URL
+    ? `${process.env.APP_URL}/auth/callback`
+    : `${req.protocol}://${req.get("host")}/auth/callback`;  const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: callbackUrl,
     response_type: "code",
