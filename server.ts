@@ -1607,10 +1607,12 @@ app.post("/api/auth/refresh", async (req, res) => {
 
 // 6. GOOGLE OAUTH URL
 app.get("/api/auth/google-url", (req, res) => {
-const callbackUrl =
-  process.env.APP_URL
-    ? `${process.env.APP_URL}/auth/callback`
-    : `${req.protocol}://${req.get("host")}/auth/callback`;  const params = new URLSearchParams({
+  const callbackUrl =
+    process.env.APP_URL
+      ? `${process.env.APP_URL}/auth/callback`
+      : `${req.protocol}://${req.get("host")}/auth/callback`;
+  const frontendOrigin = process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+  const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: callbackUrl,
     response_type: "code",
@@ -1703,7 +1705,10 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
   if (!code) {
     return res.status(400).json({ error: "Missing Google authorization code" });
   }
-  const callbackUrl = `${req.protocol}://${req.get("host")}/auth/callback`;
+  const callbackUrl =
+    process.env.APP_URL
+      ? `${process.env.APP_URL}/auth/callback`
+      : `${req.protocol}://${req.get("host")}/auth/callback`;
 
   try {
     // Exchange code for tokens
@@ -1801,6 +1806,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
             <p>Redirecting back to IPOSense workspace...</p>
           </div>
           <script>
+            const FRONTEND_ORIGIN = ${JSON.stringify(process.env.FRONTEND_URL || process.env.APP_URL || '*')};
             try {
               if (window.opener) {
                 window.opener.postMessage({
@@ -1808,7 +1814,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
                   accessToken: '${jwtAccessToken}',
                   refreshToken: '${refreshToken}',
                   user: ${userPayload}
-                }, '*');
+                }, FRONTEND_ORIGIN);
                 window.close();
               } else {
                 window.location.href = '/';
